@@ -5,19 +5,19 @@ require_once __DIR__ . '/line_push.php';
 
 $apiUrl = 'https://www.cmuccdc.org/api/floodboy/lasted';
 
-echo "[" . date('Y-m-d H:i:s') . "] cron_flood started\n";
+echo "[" . date('Y-m-d H:i:s') . "] cron_flood started<br>";
 
 // ดึงข้อมูลจาก API
 $ctx = stream_context_create(['http' => ['timeout' => 30]]);
 $json = @file_get_contents($apiUrl, false, $ctx);
 if ($json === false) {
-    echo "ERROR: Cannot fetch API\n";
+    echo "ERROR: Cannot fetch API<br>";
     exit(1);
 }
 
 $items = json_decode($json, true);
 if (!is_array($items)) {
-    echo "ERROR: Invalid JSON response\n";
+    echo "ERROR: Invalid JSON response<br>";
     exit(1);
 }
 
@@ -41,7 +41,7 @@ foreach ($items as $item) {
     $bankLevel   = (float)($item['db_model_option']['back'] ?? 0);
 
     if ($bankLevel <= 0) {
-        echo "  SKIP [{$stationName}] bankLevel=0\n";
+        echo "  SKIP [{$stationName}] bankLevel=0<br>";
         continue;
     }
 
@@ -63,12 +63,12 @@ foreach ($items as $item) {
             'group_ids'  => $defaultGroups,
             'threshold'  => 80,
         ];
-        echo "  NEW station: {$stationName} (id={$stationId})\n";
+        echo "  NEW station: {$stationName} (id={$stationId})<br>";
     }
 
     if (!$config['enabled']) {
         $skipCount++;
-        echo "  DISABLED [{$stationName}] {$percent}%\n";
+        echo "  DISABLED [{$stationName}] {$percent}%<br>";
         continue;
     }
 
@@ -82,7 +82,7 @@ foreach ($items as $item) {
     } else {
         $severity = 'normal';
         $normalCount++;
-        echo "  OK [{$stationName}] {$percent}% (threshold={$threshold}%)\n";
+        echo "  OK [{$stationName}] {$percent}% (threshold={$threshold}%)<br>";
         continue; // ไม่แจ้งเตือน
     }
 
@@ -93,7 +93,7 @@ foreach ($items as $item) {
 
     if ($recentAlerts > 0) {
         $skipCount++;
-        echo "  ALREADY ALERTED [{$stationName}] {$percent}% ({$severity})\n";
+        echo "  ALREADY ALERTED [{$stationName}] {$percent}% ({$severity})<br>";
         continue;
     }
 
@@ -113,7 +113,7 @@ foreach ($items as $item) {
         );
 
         $status = $result['success'] ? 'OK' : 'FAIL(' . $result['status'] . ')';
-        echo "  ALERT [{$stationName}] {$percent}% ({$severity}) -> group " . substr($groupId, 0, 8) . "... {$status}\n";
+        echo "  ALERT [{$stationName}] {$percent}% ({$severity}) -> group " . substr($groupId, 0, 8) . "... {$status}<br>";
     }
 
     // บันทึก alert_log
@@ -122,6 +122,6 @@ foreach ($items as $item) {
     $alertCount++;
 }
 
-echo "---\n";
-echo "Summary: alerts={$alertCount}, skipped={$skipCount}, normal={$normalCount}\n";
-echo "[" . date('Y-m-d H:i:s') . "] cron_flood finished\n";
+echo "---<br>";
+echo "Summary: alerts={$alertCount}, skipped={$skipCount}, normal={$normalCount}<br>";
+echo "[" . date('Y-m-d H:i:s') . "] cron_flood finished<br>";
