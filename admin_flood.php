@@ -261,21 +261,33 @@ function loginPage(?string $error): void { ?>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Flood Alert Admin — Login</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <title>Sign in - Flood Alert</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { font-family: -apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans",Helvetica,Arial,sans-serif; font-size: 14px; color: #1f2328; background: #f6f8fa; margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+    .login-logo { text-align: center; margin-bottom: 16px; font-size: 48px; }
+    .login-box { background: #fff; border: 1px solid #d0d7de; border-radius: 6px; padding: 20px; width: 308px; }
+    .login-box h1 { font-size: 24px; font-weight: 300; text-align: center; margin: 0 0 16px; letter-spacing: -.5px; }
+    .login-box label { display: block; font-weight: 600; margin-bottom: 6px; }
+    .login-box input[type=password] { width: 100%; padding: 5px 12px; font-size: 14px; line-height: 20px; border: 1px solid #d0d7de; border-radius: 6px; background: #f6f8fa; outline: none; }
+    .login-box input[type=password]:focus { border-color: #0969da; box-shadow: 0 0 0 3px rgba(9,105,218,.3); background: #fff; }
+    .login-btn { display: block; width: 100%; padding: 5px 16px; font-size: 14px; font-weight: 600; line-height: 20px; color: #fff; background: #1a7f37; border: 1px solid rgba(27,31,36,.15); border-radius: 6px; cursor: pointer; margin-top: 16px; }
+    .login-btn:hover { background: #116329; }
+    .login-error { padding: 8px 12px; margin-bottom: 12px; background: #ffebe9; border: 1px solid rgba(255,129,130,.4); border-radius: 6px; color: #82071e; font-size: 13px; }
+  </style>
 </head>
-<body class="bg-light d-flex align-items-center justify-content-center" style="min-height:100vh">
-  <div class="card shadow" style="width:340px">
-    <div class="card-body p-4">
-      <h5 class="mb-3 text-center">🔒 Flood Alert Admin</h5>
+<body>
+  <div>
+    <div class="login-logo">🌊</div>
+    <div class="login-box">
+      <h1>Sign in to Flood Alert</h1>
       <?php if ($error): ?>
-        <div class="alert alert-danger py-2"><?= htmlspecialchars($error) ?></div>
+        <div class="login-error"><?= htmlspecialchars($error) ?></div>
       <?php endif ?>
       <form method="post">
-        <div class="mb-3">
-          <input type="password" name="password" class="form-control" placeholder="รหัสผ่าน" autofocus required>
-        </div>
-        <button class="btn btn-primary w-100">เข้าสู่ระบบ</button>
+        <label for="pw">Password</label>
+        <input type="password" id="pw" name="password" autofocus required>
+        <button type="submit" class="login-btn">Sign in</button>
       </form>
     </div>
   </div>
@@ -298,96 +310,181 @@ function isTab(string $tab): bool {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Flood Alert Admin</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
   <style>
-    body { font-size: .95rem; background: #f5f7fa; }
-    .table td, .table th { vertical-align: middle; }
-    .group-id { font-family: monospace; font-size: .85rem; word-break: break-all; }
-    .nav-pills .nav-link { color: #495057; border-radius: .5rem; font-weight: 500; }
-    .nav-pills .nav-link.active { background: #0d6efd; color: #fff; }
-    .nav-pills .nav-link:not(.active):hover { background: #e9ecef; }
-    .card { border: none; border-radius: .75rem; }
-    .card-header { border-radius: .75rem .75rem 0 0 !important; }
-    .top-bar { background: #fff; border-bottom: 1px solid #dee2e6; }
-    .guide-section { max-width: 800px; }
-    .guide-section h5 { color: #0d6efd; border-bottom: 2px solid #e9ecef; padding-bottom: .5rem; }
-    pre.flow-diagram { background: #1e293b; color: #e2e8f0; border-radius: .5rem; padding: 1.25rem; font-size: .85rem; line-height: 1.6; overflow-x: auto; }
-    .severity-flag { font-size: 2.5rem; line-height: 1; }
-    .severity-label { font-weight: 700; font-size: 1.1rem; }
-    .severity-table td { padding: 1rem 1.25rem; border-bottom: 1px solid #eee; vertical-align: middle; }
-    .severity-table th { padding: .75rem 1.25rem; font-weight: 500; color: #6b7280; border-bottom: 2px solid #e5e7eb; }
+    *, *::before, *::after { box-sizing: border-box; }
+    body { font-family: -apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans",Helvetica,Arial,sans-serif; font-size: 14px; line-height: 1.5; color: #1f2328; background: #f6f8fa; margin: 0; }
+    a { color: #0969da; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* Header */
+    .gh-header { background: #24292f; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; }
+    .gh-header-title { color: #f0f6fc; font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+    .gh-header-title span { font-size: 20px; }
+    .gh-header .btn-logout { color: #d0d7de; background: transparent; border: 1px solid #6e7681; border-radius: 6px; padding: 3px 12px; font-size: 12px; cursor: pointer; font-family: inherit; }
+    .gh-header .btn-logout:hover { color: #f0f6fc; border-color: #8b949e; }
+
+    /* Container */
+    .container { max-width: 1280px; margin: 0 auto; padding: 24px; }
+
+    /* Flash */
+    .flash { padding: 12px 16px; margin-bottom: 16px; border: 1px solid #d0d7de; border-radius: 6px; background: #ddf4ff; color: #0969da; font-size: 14px; position: relative; }
+    .flash-close { position: absolute; top: 10px; right: 12px; background: none; border: none; cursor: pointer; color: #656d76; font-size: 16px; line-height: 1; padding: 0; }
+
+    /* Underline Tabs */
+    .UnderlineNav { display: flex; border-bottom: 1px solid #d0d7de; margin-bottom: 16px; gap: 0; overflow-x: auto; }
+    .UnderlineNav-item { padding: 8px 16px; font-size: 14px; color: #656d76; font-weight: 500; border-bottom: 2px solid transparent; white-space: nowrap; text-decoration: none; }
+    .UnderlineNav-item:hover { color: #1f2328; text-decoration: none; border-bottom-color: #d0d7de; }
+    .UnderlineNav-item.selected { color: #1f2328; font-weight: 600; border-bottom-color: #fd8c73; }
+    .UnderlineNav-item .Counter { display: inline-block; min-width: 20px; padding: 0 6px; font-size: 12px; font-weight: 600; line-height: 18px; text-align: center; background: rgba(175,184,193,.2); border-radius: 10px; margin-left: 4px; }
+    .UnderlineNav-item.selected .Counter { background: rgba(234,74,40,.1); color: #bc4c00; }
+
+    /* Box (like GitHub repo box) */
+    .Box { border: 1px solid #d0d7de; border-radius: 6px; background: #fff; }
+    .Box-header { padding: 12px 16px; background: #f6f8fa; border-bottom: 1px solid #d0d7de; border-radius: 6px 6px 0 0; display: flex; align-items: center; justify-content: space-between; }
+    .Box-header h3 { margin: 0; font-size: 14px; font-weight: 600; }
+    .Box-body { padding: 16px; }
+    .Box-row { padding: 12px 16px; border-top: 1px solid #d0d7de; }
+    .Box-row:first-child { border-top: none; }
+
+    /* Tables */
+    .gh-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .gh-table th { padding: 8px 16px; background: #f6f8fa; border-bottom: 1px solid #d0d7de; text-align: left; font-weight: 600; color: #1f2328; white-space: nowrap; font-size: 12px; }
+    .gh-table td { padding: 8px 16px; border-bottom: 1px solid #d0d7de; vertical-align: middle; }
+    .gh-table tbody tr:last-child td { border-bottom: none; }
+    .gh-table tbody tr:hover { background: #f6f8fa; }
+
+    /* Buttons */
+    .btn { display: inline-flex; align-items: center; gap: 4px; padding: 3px 12px; font-size: 12px; font-weight: 600; font-family: inherit; line-height: 20px; border-radius: 6px; cursor: pointer; border: 1px solid rgba(27,31,36,.15); white-space: nowrap; }
+    .btn-primary { color: #fff; background: #1a7f37; }
+    .btn-primary:hover { background: #116329; }
+    .btn-default { color: #24292f; background: #f6f8fa; }
+    .btn-default:hover { background: #eaeef2; }
+    .btn-danger-outline { color: #cf222e; background: transparent; border-color: rgba(27,31,36,.15); }
+    .btn-danger-outline:hover { color: #fff; background: #cf222e; border-color: #cf222e; }
+    .btn-sm { padding: 1px 8px; font-size: 11px; }
+    .btn-toggle-on { color: #fff; background: #1a7f37; border-color: rgba(27,31,36,.15); }
+    .btn-toggle-off { color: #656d76; background: #f6f8fa; border-color: #d0d7de; }
+
+    /* Form controls */
+    .form-control { padding: 3px 12px; font-size: 14px; line-height: 20px; border: 1px solid #d0d7de; border-radius: 6px; background: #fff; font-family: inherit; outline: none; }
+    .form-control:focus { border-color: #0969da; box-shadow: 0 0 0 3px rgba(9,105,218,.3); }
+    .form-control-sm { padding: 1px 8px; font-size: 12px; }
+    .form-select { padding: 3px 28px 3px 8px; font-size: 12px; line-height: 20px; border: 1px solid #d0d7de; border-radius: 6px; background: #f6f8fa url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' fill='none' stroke='%23656d76' stroke-width='1.5'/%3E%3C/svg%3E") right 8px center/12px no-repeat; -webkit-appearance: none; font-family: inherit; cursor: pointer; outline: none; }
+    .form-select:focus { border-color: #0969da; box-shadow: 0 0 0 3px rgba(9,105,218,.3); }
+
+    /* Monospace */
+    code, .mono { font-family: ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace; font-size: 12px; }
+
+    /* Util */
+    .text-muted { color: #656d76; }
+    .text-bold { font-weight: 600; }
+    .text-small { font-size: 12px; }
+    .text-right { text-align: right; }
+    .text-center { text-align: center; }
+    .text-danger { color: #cf222e; font-weight: 600; }
+    .text-warning { color: #bf8700; font-weight: 600; }
+    .text-success { color: #1a7f37; }
+    .d-flex { display: flex; }
+    .align-center { align-items: center; }
+    .gap-4 { gap: 4px; }
+    .gap-8 { gap: 8px; }
+    .gap-16 { gap: 16px; }
+    .mb-0 { margin-bottom: 0; }
+    .mb-8 { margin-bottom: 8px; }
+    .mb-16 { margin-bottom: 16px; }
+    .mt-4 { margin-top: 4px; }
+    .mt-8 { margin-top: 8px; }
+    .inline { display: inline; }
+    .block { display: block; }
+    .overflow-auto { overflow-x: auto; }
+    .group-id { font-family: ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace; font-size: 12px; word-break: break-all; color: #656d76; }
+
+    /* Guide */
+    .guide-section { max-width: 860px; }
+    .guide-section h3 { font-size: 16px; font-weight: 600; padding-bottom: 8px; border-bottom: 1px solid #d0d7de; margin-bottom: 12px; color: #1f2328; }
+    pre.flow-diagram { background: #24292f; color: #e6edf3; border-radius: 6px; padding: 16px; font-family: ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace; font-size: 13px; line-height: 1.6; overflow-x: auto; border: 1px solid #d0d7de; }
+    .severity-row { display: flex; align-items: center; padding: 16px 0; border-bottom: 1px solid #d0d7de; gap: 24px; }
+    .severity-row:last-child { border-bottom: none; }
+    .severity-icon { font-size: 36px; line-height: 1; min-width: 50px; text-align: center; }
+    .severity-name { font-weight: 700; font-size: 15px; min-width: 80px; }
+    .severity-pct { min-width: 160px; color: #656d76; font-size: 14px; }
+    .severity-desc { color: #1f2328; font-size: 14px; }
+    .guide-card { border: 1px solid #d0d7de; border-radius: 6px; background: #fff; padding: 20px; margin-bottom: 16px; }
+    .guide-card ol, .guide-card ul { padding-left: 20px; margin: 8px 0 0; }
+    .guide-card li { margin-bottom: 6px; }
+    .guide-tip { background: #ddf4ff; border: 1px solid #54aeff66; border-radius: 6px; padding: 12px 16px; font-size: 13px; margin-top: 12px; }
   </style>
 </head>
 <body>
 
-<!-- Top Bar -->
-<div class="top-bar px-3 py-2 mb-3">
-  <div class="container-fluid d-flex align-items-center justify-content-between">
-    <h5 class="mb-0 fw-bold">🌊 Flood Alert System</h5>
-    <form method="post" class="d-inline">
-      <button name="logout" class="btn btn-sm btn-outline-secondary">ออกจากระบบ</button>
-    </form>
+<!-- GitHub-style Header -->
+<div class="gh-header">
+  <div class="gh-header-title">
+    <span>🌊</span> Flood Alert System
   </div>
+  <form method="post" class="inline">
+    <button name="logout" class="btn-logout">Sign out</button>
+  </form>
 </div>
 
-<div class="container-fluid px-3">
+<div class="container">
 
   <?php if ($message): ?>
-    <div class="alert alert-info alert-dismissible py-2 mb-3">
+    <div class="flash">
       <?= htmlspecialchars($message) ?>
-      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      <button class="flash-close" onclick="this.parentElement.remove()">&times;</button>
     </div>
   <?php endif ?>
 
-  <!-- Tab Navigation -->
-  <ul class="nav nav-pills mb-3 gap-1">
-    <li class="nav-item">
-      <a class="nav-link <?= isTab('stations') ? 'active' : '' ?>" href="<?= tabUrl('stations') ?>">📡 จุดตรวจวัด</a>
-    </li>
-    <li class="nav-item">
-      <a class="nav-link <?= isTab('groups') ? 'active' : '' ?>" href="<?= tabUrl('groups') ?>">💬 กลุ่ม LINE</a>
-    </li>
-    <li class="nav-item">
-      <a class="nav-link <?= isTab('history') ? 'active' : '' ?>" href="<?= tabUrl('history') ?>">🔔 ประวัติแจ้งเตือน</a>
-    </li>
-    <li class="nav-item">
-      <a class="nav-link <?= isTab('guide') ? 'active' : '' ?>" href="<?= tabUrl('guide') ?>">📖 คู่มือ</a>
-    </li>
-  </ul>
+  <!-- Underline Tab Navigation -->
+  <nav class="UnderlineNav">
+    <a class="UnderlineNav-item <?= isTab('stations') ? 'selected' : '' ?>" href="<?= tabUrl('stations') ?>">
+      📡 จุดตรวจวัด <span class="Counter"><?= count($stations) ?></span>
+    </a>
+    <a class="UnderlineNav-item <?= isTab('groups') ? 'selected' : '' ?>" href="<?= tabUrl('groups') ?>">
+      💬 กลุ่ม LINE <span class="Counter"><?= count($lineGroups) ?></span>
+    </a>
+    <a class="UnderlineNav-item <?= isTab('history') ? 'selected' : '' ?>" href="<?= tabUrl('history') ?>">
+      🔔 ประวัติแจ้งเตือน <span class="Counter"><?= count($recentAlerts) ?></span>
+    </a>
+    <a class="UnderlineNav-item <?= isTab('guide') ? 'selected' : '' ?>" href="<?= tabUrl('guide') ?>">
+      📖 คู่มือ
+    </a>
+  </nav>
 
   <!-- ============================================================ -->
   <!-- TAB: STATIONS -->
   <!-- ============================================================ -->
   <?php if (isTab('stations')): ?>
-  <div class="card shadow-sm">
-    <div class="card-header bg-white d-flex justify-content-between align-items-center py-2">
-      <strong>📋 รายการสถานี (<?= count($stations) ?>)</strong>
-      <form method="post" action="<?= tabUrl('stations') ?>" class="d-inline">
-        <button name="action" value="sync" class="btn btn-sm btn-success" onclick="return confirm('Sync สถานีจาก API?')">🔄 Sync สถานี</button>
+  <div class="Box">
+    <div class="Box-header">
+      <h3>📋 รายการสถานี</h3>
+      <form method="post" action="<?= tabUrl('stations') ?>" class="inline">
+        <button name="action" value="sync" class="btn btn-primary" onclick="return confirm('Sync สถานีจาก API?')">🔄 Sync สถานี</button>
       </form>
     </div>
     <?php if ($stations): ?>
-    <div class="table-responsive">
-      <table class="table table-hover table-sm mb-0">
-        <thead class="table-light">
+    <div class="overflow-auto">
+      <table class="gh-table">
+        <thead>
           <tr>
             <th>สถานี</th>
             <th>URI</th>
-            <th style="width:100px">ระดับน้ำ (ม.)</th>
-            <th style="width:100px">ขอบตลิ่ง (ม.)</th>
-            <th style="width:70px">%</th>
-            <th style="width:90px">สถานะ</th>
-            <th style="width:120px">Threshold %</th>
-            <th>LINE Group IDs</th>
-            <th style="width:150px">อัปเดตล่าสุด</th>
+            <th style="width:90px">ระดับน้ำ (ม.)</th>
+            <th style="width:90px">ขอบตลิ่ง (ม.)</th>
+            <th style="width:60px">%</th>
+            <th style="width:80px">สถานะ</th>
+            <th style="width:130px">Threshold %</th>
+            <th>LINE Groups</th>
+            <th style="width:140px">อัปเดตล่าสุด</th>
           </tr>
         </thead>
         <tbody>
           <?php foreach ($stations as $s): ?>
           <tr>
             <td>
-              <strong><?= htmlspecialchars($s['station_name']) ?></strong>
-              <br><small class="text-muted">ID: <?= htmlspecialchars($s['station_id']) ?></small>
+              <span class="text-bold"><?= htmlspecialchars($s['station_name']) ?></span>
+              <br><span class="text-small text-muted">ID: <?= htmlspecialchars($s['station_id']) ?></span>
             </td>
             <td>
               <?php if ($s['uri']): ?>
@@ -402,32 +499,32 @@ function isTab(string $tab): bool {
               $live = $liveData[$s['station_id']] ?? null;
               if ($live):
                   $pct = $live['percent'];
-                  $pctClass = $pct >= 100 ? 'text-danger fw-bold' : ($pct > $s['threshold'] ? 'text-warning fw-bold' : 'text-success');
+                  $pctClass = $pct >= 100 ? 'text-danger' : ($pct > $s['threshold'] ? 'text-warning' : 'text-success');
             ?>
-            <td class="text-end"><?= number_format($live['water_level'], 2) ?></td>
-            <td class="text-end"><?= number_format($live['bank_level'], 2) ?></td>
-            <td class="text-end"><span class="<?= $pctClass ?>"><?= $pct ?>%</span></td>
+            <td class="text-right mono"><?= number_format($live['water_level'], 2) ?></td>
+            <td class="text-right mono"><?= number_format($live['bank_level'], 2) ?></td>
+            <td class="text-right"><span class="<?= $pctClass ?>"><?= $pct ?>%</span></td>
             <?php else: ?>
-            <td class="text-muted text-center">-</td>
-            <td class="text-muted text-center">-</td>
-            <td class="text-muted text-center">-</td>
+            <td class="text-center text-muted">-</td>
+            <td class="text-center text-muted">-</td>
+            <td class="text-center text-muted">-</td>
             <?php endif ?>
             <td>
-              <form method="post" action="<?= tabUrl('stations') ?>" class="d-inline">
+              <form method="post" action="<?= tabUrl('stations') ?>" class="inline">
                 <input type="hidden" name="action" value="toggle">
                 <input type="hidden" name="station_id" value="<?= htmlspecialchars($s['station_id']) ?>">
                 <input type="hidden" name="enabled" value="<?= $s['enabled'] ? 0 : 1 ?>">
-                <button class="btn btn-sm <?= $s['enabled'] ? 'btn-success' : 'btn-outline-secondary' ?>">
+                <button class="btn btn-sm <?= $s['enabled'] ? 'btn-toggle-on' : 'btn-toggle-off' ?>">
                   <?= $s['enabled'] ? '🔔 เปิด' : '🔕 ปิด' ?>
                 </button>
               </form>
             </td>
             <td>
-              <form method="post" action="<?= tabUrl('stations') ?>" class="d-flex gap-1">
+              <form method="post" action="<?= tabUrl('stations') ?>" class="d-flex align-center gap-4">
                 <input type="hidden" name="action" value="threshold">
                 <input type="hidden" name="station_id" value="<?= htmlspecialchars($s['station_id']) ?>">
-                <input type="number" name="threshold" value="<?= $s['threshold'] ?>" min="1" max="100" step="1" class="form-control form-control-sm" style="width:70px">
-                <button class="btn btn-sm btn-outline-primary">บันทึก</button>
+                <input type="number" name="threshold" value="<?= $s['threshold'] ?>" min="1" max="100" step="1" class="form-control form-control-sm" style="width:60px">
+                <button class="btn btn-sm btn-default">Save</button>
               </form>
             </td>
             <td>
@@ -436,22 +533,22 @@ function isTab(string $tab): bool {
               foreach ($groups as $g):
                   $gLabel = $groupNameMap[$g] ?? substr($g, 0, 10) . '...';
               ?>
-                <div class="d-flex align-items-center gap-1 mb-1">
+                <div class="d-flex align-center gap-4 mb-0" style="margin-bottom:4px">
                   <span class="group-id" title="<?= htmlspecialchars($g) ?>"><?= htmlspecialchars($gLabel) ?></span>
-                  <form method="post" action="<?= tabUrl('stations') ?>" class="d-inline">
+                  <form method="post" action="<?= tabUrl('stations') ?>" class="inline">
                     <input type="hidden" name="action" value="remove_group">
                     <input type="hidden" name="station_id" value="<?= htmlspecialchars($s['station_id']) ?>">
                     <input type="hidden" name="remove_group" value="<?= htmlspecialchars($g) ?>">
-                    <button class="btn btn-sm btn-outline-danger py-0 px-1" title="ลบ" onclick="return confirm('ลบกลุ่มนี้?')">✕</button>
+                    <button class="btn btn-sm btn-danger-outline" style="padding:0 4px;font-size:10px;line-height:16px" title="ลบ" onclick="return confirm('ลบกลุ่มนี้?')">✕</button>
                   </form>
                 </div>
               <?php endforeach ?>
               <?php if ($lineGroups): ?>
-              <form method="post" action="<?= tabUrl('stations') ?>" class="d-flex gap-1 mt-1">
+              <form method="post" action="<?= tabUrl('stations') ?>" class="d-flex align-center gap-4 mt-4">
                 <input type="hidden" name="action" value="add_group">
                 <input type="hidden" name="station_id" value="<?= htmlspecialchars($s['station_id']) ?>">
-                <select name="new_group" class="form-select form-select-sm" style="width:160px">
-                  <option value="">-- เพิ่มกลุ่ม --</option>
+                <select name="new_group" class="form-select" style="width:150px">
+                  <option value="">เพิ่มกลุ่ม...</option>
                   <?php foreach ($lineGroups as $lg):
                       $alreadyAdded = in_array($lg['group_id'], $groups);
                       $label = $lg['group_name'] ?: substr($lg['group_id'], 0, 15) . '...';
@@ -461,18 +558,18 @@ function isTab(string $tab): bool {
                     </option>
                   <?php endforeach ?>
                 </select>
-                <button class="btn btn-sm btn-outline-success py-0">+</button>
+                <button class="btn btn-sm btn-default">+</button>
               </form>
               <?php endif ?>
             </td>
-            <td><small class="text-muted"><?= htmlspecialchars($s['updated_at'] ?? '') ?></small></td>
+            <td><span class="text-small text-muted"><?= htmlspecialchars($s['updated_at'] ?? '') ?></span></td>
           </tr>
           <?php endforeach ?>
         </tbody>
       </table>
     </div>
     <?php else: ?>
-    <div class="card-body">
+    <div class="Box-body">
       <p class="text-muted mb-0">ยังไม่มีสถานี — กดปุ่ม "Sync สถานี" เพื่อดึงข้อมูลจาก API</p>
     </div>
     <?php endif ?>
@@ -482,41 +579,41 @@ function isTab(string $tab): bool {
   <!-- TAB: LINE GROUPS -->
   <!-- ============================================================ -->
   <?php elseif (isTab('groups')): ?>
-  <div class="card shadow-sm">
-    <div class="card-header bg-white d-flex justify-content-between align-items-center py-2">
-      <strong>💬 กลุ่ม LINE ที่ Bot อยู่ (<?= count($lineGroups) ?>)</strong>
-      <div class="d-flex gap-1">
-        <form method="post" action="<?= tabUrl('groups') ?>" class="d-inline">
-          <button name="action" value="scan_logs" class="btn btn-sm btn-outline-primary">📂 Scan จาก Log</button>
+  <div class="Box">
+    <div class="Box-header">
+      <h3>💬 กลุ่ม LINE ที่ Bot อยู่</h3>
+      <div class="d-flex gap-8">
+        <form method="post" action="<?= tabUrl('groups') ?>" class="inline">
+          <button name="action" value="scan_logs" class="btn btn-default">📂 Scan จาก Log</button>
         </form>
-        <form method="post" action="<?= tabUrl('groups') ?>" class="d-inline">
-          <button name="action" value="refresh_groups" class="btn btn-sm btn-outline-primary">🔄 ดึงชื่อกลุ่ม</button>
+        <form method="post" action="<?= tabUrl('groups') ?>" class="inline">
+          <button name="action" value="refresh_groups" class="btn btn-default">🔄 ดึงชื่อกลุ่ม</button>
         </form>
       </div>
     </div>
     <?php if ($lineGroups): ?>
-    <div class="table-responsive">
-      <table class="table table-sm mb-0">
-        <thead class="table-light">
+    <div class="overflow-auto">
+      <table class="gh-table">
+        <thead>
           <tr>
             <th>Group ID</th>
             <th>ชื่อกลุ่ม</th>
             <th>เข้าร่วมเมื่อ</th>
-            <th style="width:200px">แก้ไขชื่อ</th>
+            <th style="width:240px">แก้ไขชื่อ</th>
           </tr>
         </thead>
         <tbody>
           <?php foreach ($lineGroups as $lg): ?>
           <tr>
-            <td><code class="small"><?= htmlspecialchars($lg['group_id']) ?></code></td>
+            <td><code><?= htmlspecialchars($lg['group_id']) ?></code></td>
             <td><?= htmlspecialchars($lg['group_name'] ?: '-') ?></td>
-            <td><small class="text-muted"><?= htmlspecialchars($lg['joined_at']) ?></small></td>
+            <td><span class="text-small text-muted"><?= htmlspecialchars($lg['joined_at']) ?></span></td>
             <td>
-              <form method="post" action="<?= tabUrl('groups') ?>" class="d-flex gap-1">
+              <form method="post" action="<?= tabUrl('groups') ?>" class="d-flex align-center gap-4">
                 <input type="hidden" name="action" value="rename_group">
                 <input type="hidden" name="group_id" value="<?= htmlspecialchars($lg['group_id']) ?>">
-                <input type="text" name="group_name" value="<?= htmlspecialchars($lg['group_name']) ?>" placeholder="ตั้งชื่อ" class="form-control form-control-sm">
-                <button class="btn btn-sm btn-outline-primary">บันทึก</button>
+                <input type="text" name="group_name" value="<?= htmlspecialchars($lg['group_name']) ?>" placeholder="ตั้งชื่อ" class="form-control form-control-sm" style="flex:1">
+                <button class="btn btn-sm btn-default">Save</button>
               </form>
             </td>
           </tr>
@@ -525,7 +622,7 @@ function isTab(string $tab): bool {
       </table>
     </div>
     <?php else: ?>
-    <div class="card-body">
+    <div class="Box-body">
       <p class="text-muted mb-0">ยังไม่มีกลุ่ม — เพิ่ม Bot เข้ากลุ่ม LINE แล้วส่งข้อความเพื่อให้ระบบบันทึก Group ID อัตโนมัติ</p>
     </div>
     <?php endif ?>
@@ -535,14 +632,14 @@ function isTab(string $tab): bool {
   <!-- TAB: HISTORY -->
   <!-- ============================================================ -->
   <?php elseif (isTab('history')): ?>
-  <div class="card shadow-sm">
-    <div class="card-header bg-white py-2">
-      <strong>🔔 ประวัติการแจ้งเตือน (ล่าสุด 50 รายการ)</strong>
+  <div class="Box">
+    <div class="Box-header">
+      <h3>🔔 ประวัติการแจ้งเตือน (ล่าสุด 50 รายการ)</h3>
     </div>
     <?php if ($recentAlerts): ?>
-    <div class="table-responsive">
-      <table class="table table-sm table-hover mb-0">
-        <thead class="table-light">
+    <div class="overflow-auto">
+      <table class="gh-table">
+        <thead>
           <tr>
             <th>เวลา</th>
             <th>สถานี</th>
@@ -552,12 +649,12 @@ function isTab(string $tab): bool {
         <tbody>
           <?php foreach ($recentAlerts as $a): ?>
           <tr>
-            <td><small><?= htmlspecialchars($a['alerted_at']) ?></small></td>
+            <td><span class="text-small text-muted"><?= htmlspecialchars($a['alerted_at']) ?></span></td>
             <td><?= htmlspecialchars($a['station_name'] ?? $a['station_id']) ?></td>
             <td>
               <?php
               $pct = $a['percent'];
-              $cls = $pct >= 100 ? 'text-danger fw-bold' : 'text-warning';
+              $cls = $pct >= 100 ? 'text-danger' : 'text-warning';
               ?>
               <span class="<?= $cls ?>"><?= $pct ?>%</span>
             </td>
@@ -567,7 +664,7 @@ function isTab(string $tab): bool {
       </table>
     </div>
     <?php else: ?>
-    <div class="card-body">
+    <div class="Box-body">
       <p class="text-muted mb-0">ยังไม่มีการแจ้งเตือน</p>
     </div>
     <?php endif ?>
@@ -580,22 +677,19 @@ function isTab(string $tab): bool {
   <div class="guide-section">
 
     <!-- ภาพรวม -->
-    <div class="card shadow-sm mb-3">
-      <div class="card-body">
-        <h5>📌 ภาพรวมระบบ</h5>
-        <p>ระบบ Flood Alert เป็นระบบแจ้งเตือนระดับน้ำผ่าน LINE Messaging API โดยดึงข้อมูลจากสถานีตรวจวัดของ CMU CCDC แล้วส่งการแจ้งเตือนไปยังกลุ่ม LINE ที่กำหนด เมื่อระดับน้ำเกินค่า threshold ที่ตั้งไว้</p>
-        <ul class="mb-0">
-          <li><strong>แหล่งข้อมูล:</strong> CMU CCDC Floodboy API (ข้อมูลระดับน้ำ realtime)</li>
-          <li><strong>การแจ้งเตือน:</strong> LINE Messaging API (Flex Message)</li>
-          <li><strong>การทำงาน:</strong> Cron job ทำงานตามรอบที่ตั้งไว้</li>
-        </ul>
-      </div>
+    <div class="guide-card">
+      <h3>📌 ภาพรวมระบบ</h3>
+      <p>ระบบ Flood Alert เป็นระบบแจ้งเตือนระดับน้ำผ่าน LINE Messaging API โดยดึงข้อมูลจากสถานีตรวจวัดของ CMU CCDC แล้วส่งการแจ้งเตือนไปยังกลุ่ม LINE ที่กำหนด เมื่อระดับน้ำเกินค่า threshold ที่ตั้งไว้</p>
+      <ul>
+        <li><strong>แหล่งข้อมูล:</strong> CMU CCDC Floodboy API (ข้อมูลระดับน้ำ realtime)</li>
+        <li><strong>การแจ้งเตือน:</strong> LINE Messaging API (Flex Message)</li>
+        <li><strong>การทำงาน:</strong> Cron job ทำงานตามรอบที่ตั้งไว้</li>
+      </ul>
     </div>
 
     <!-- Flow Diagram -->
-    <div class="card shadow-sm mb-3">
-      <div class="card-body">
-        <h5>⚙️ Flow การทำงานของ Cron</h5>
+    <div class="guide-card">
+      <h3>⚙️ Flow การทำงานของ Cron</h3>
 <pre class="flow-diagram">
 ┌──────────────┐
 │  Cron Job    │  (ทุก 15 นาที หรือตามที่ตั้งไว้)
@@ -627,80 +721,76 @@ function isTab(string $tab): bool {
 │       + บันทึก alert_log     │
 └──────────────────────────────┘
 </pre>
-      </div>
     </div>
 
     <!-- ระดับการแจ้งเตือนภัยน้ำท่วม -->
-    <div class="card shadow-sm mb-3">
-      <div class="card-body">
-        <h5>🚩 ระดับการแจ้งเตือนภัยน้ำท่วม</h5>
-        <table class="severity-table w-100" style="border-collapse:collapse">
-          <thead>
-            <tr>
-              <th style="width:140px">ระดับสี</th>
-              <th style="width:200px">ความจุลำน้ำ</th>
-              <th>คำแนะนำ</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>
-                <div class="severity-flag">🟩</div>
-                <div class="severity-label" style="color:#0d9488">ปกติ</div>
-              </td>
-              <td>&le;80%</td>
-              <td>สภาวะน้ำปกติ</td>
-            </tr>
-            <tr>
-              <td>
-                <div class="severity-flag">🟨</div>
-                <div class="severity-label" style="color:#d97706">เฝ้าระวัง</div>
-              </td>
-              <td>&gt;80% ถึง &lt;100%</td>
-              <td>ติดตามข่าวสารอย่างใกล้ชิด เตรียมพร้อมอพยพ/แจ้งเตือนเมื่อจำเป็น</td>
-            </tr>
-            <tr>
-              <td>
-                <div class="severity-flag">🟥</div>
-                <div class="severity-label" style="color:#dc2626">วิกฤต</div>
-              </td>
-              <td>&ge;100%</td>
-              <td>ดำเนินการแจ้งเตือนภัยและอพยพประชาชนทันที</td>
-            </tr>
-          </tbody>
-        </table>
-        <p class="text-muted small mt-3 mb-0">ที่มา: ศูนย์อุทกวิทยาและการประยุกต์ มหาวิทยาลัยเชียงใหม่</p>
+    <div class="guide-card">
+      <h3>🚩 ระดับการแจ้งเตือนภัยน้ำท่วม</h3>
+      <div style="border:1px solid #d0d7de;border-radius:6px;overflow:hidden">
+        <div style="display:flex;padding:10px 24px;background:#f6f8fa;border-bottom:1px solid #d0d7de">
+          <span class="text-small text-bold" style="min-width:120px">ระดับสี</span>
+          <span class="text-small text-bold" style="min-width:180px">ความจุลำน้ำ</span>
+          <span class="text-small text-bold">คำแนะนำ</span>
+        </div>
+        <div class="severity-row" style="padding:16px 24px;margin:0">
+          <div>
+            <div class="severity-icon">🟩</div>
+            <div class="severity-name" style="color:#1a7f37">ปกติ</div>
+          </div>
+          <div class="severity-pct">&le;80%</div>
+          <div class="severity-desc">สภาวะน้ำปกติ</div>
+        </div>
+        <div class="severity-row" style="padding:16px 24px;margin:0">
+          <div>
+            <div class="severity-icon">🟨</div>
+            <div class="severity-name" style="color:#bf8700">เฝ้าระวัง</div>
+          </div>
+          <div class="severity-pct">&gt;80% ถึง &lt;100%</div>
+          <div class="severity-desc">ติดตามข่าวสารอย่างใกล้ชิด เตรียมพร้อมอพยพ/แจ้งเตือนเมื่อจำเป็น</div>
+        </div>
+        <div class="severity-row" style="padding:16px 24px;margin:0;border-bottom:none">
+          <div>
+            <div class="severity-icon">🟥</div>
+            <div class="severity-name" style="color:#cf222e">วิกฤต</div>
+          </div>
+          <div class="severity-pct">&ge;100%</div>
+          <div class="severity-desc">ดำเนินการแจ้งเตือนภัยและอพยพประชาชนทันที</div>
+        </div>
       </div>
+      <p class="text-small text-muted" style="margin-top:12px">ที่มา: ศูนย์อุทกวิทยาและการประยุกต์ มหาวิทยาลัยเชียงใหม่</p>
     </div>
 
     <!-- วิธีเพิ่ม Bot เข้ากลุ่ม -->
-    <div class="card shadow-sm mb-3">
-      <div class="card-body">
-        <h5>🤖 วิธีเพิ่ม Bot เข้ากลุ่ม LINE</h5>
-        <ol>
-          <li>เปิดแอป LINE บนมือถือ</li>
-          <li>เข้ากลุ่มที่ต้องการ → กดชื่อกลุ่มด้านบน → <strong>เชิญ</strong></li>
-          <li>ค้นหาชื่อ Bot แล้วเพิ่มเข้ากลุ่ม</li>
-          <li>ส่งข้อความอะไรก็ได้ในกลุ่ม (เพื่อให้ webhook จับ Group ID)</li>
-          <li>กลับมาหน้า Admin → แท็บ <strong>💬 กลุ่ม LINE</strong> → กด <strong>"📂 Scan จาก Log"</strong></li>
-          <li>กลุ่มใหม่จะปรากฏในรายการ → สามารถเลือกใช้กับสถานีได้</li>
-        </ol>
+    <div class="guide-card">
+      <h3>🤖 วิธีเพิ่ม Bot เข้ากลุ่ม LINE</h3>
+      <div style="background:#f6f8fa;border:1px solid #d0d7de;border-radius:6px;padding:12px 16px;margin-bottom:12px;display:flex;align-items:center;gap:12px">
+        <span style="font-size:24px">🤖</span>
+        <div>
+          <span class="text-small text-muted">LINE ID ของ Bot</span><br>
+          <code style="font-size:16px;font-weight:600;color:#0969da"><?= htmlspecialchars(LINE_ฺID) ?></code>
+        </div>
       </div>
+      <ol>
+        <li>เปิดแอป LINE บนมือถือ → ค้นหา ID <code><?= htmlspecialchars(LINE_ฺID) ?></code> แล้วเพิ่มเป็นเพื่อน</li>
+        <li>เข้ากลุ่มที่ต้องการ → กดชื่อกลุ่มด้านบน → <strong>เชิญ</strong></li>
+        <li>ค้นหาชื่อ Bot หรือเลือกจากรายชื่อเพื่อน แล้วเพิ่มเข้ากลุ่ม</li>
+        <li>ส่งข้อความอะไรก็ได้ในกลุ่ม (เพื่อให้ webhook จับ Group ID)</li>
+        <li>กลับมาหน้า Admin → แท็บ <strong>💬 กลุ่ม LINE</strong> → กด <strong>"📂 Scan จาก Log"</strong></li>
+        <li>กลุ่มใหม่จะปรากฏในรายการ → สามารถเลือกใช้กับสถานีได้</li>
+      </ol>
     </div>
 
     <!-- วิธีจัดการสถานี -->
-    <div class="card shadow-sm mb-3">
-      <div class="card-body">
-        <h5>🔧 วิธีจัดการสถานี / Threshold</h5>
-        <ol>
-          <li><strong>Sync สถานี</strong> — กดปุ่ม "🔄 Sync สถานี" ในแท็บ 📡 จุดตรวจวัด เพื่อดึงรายการสถานีล่าสุดจาก API</li>
-          <li><strong>เปิด/ปิดสถานี</strong> — กดปุ่ม 🔔/🔕 เพื่อเปิดหรือปิดการแจ้งเตือนของแต่ละสถานี</li>
-          <li><strong>ตั้งค่า Threshold</strong> — กรอกค่า % ที่ต้องการ (1–100) แล้วกดบันทึก เมื่อระดับน้ำเกินค่านี้ระบบจะส่งแจ้งเตือน</li>
-          <li><strong>เพิ่ม/ลบกลุ่ม LINE</strong> — เลือกกลุ่มจาก dropdown เพื่อเพิ่ม หรือกด ✕ เพื่อลบกลุ่มออกจากสถานี</li>
-        </ol>
-        <div class="alert alert-light border small mb-0">
-          <strong>💡 Tips:</strong> ค่า threshold ที่แนะนำคือ 80% สำหรับการเตือนล่วงหน้า หรือ 70% หากต้องการเตือนเร็วขึ้น
-        </div>
+    <div class="guide-card">
+      <h3>🔧 วิธีจัดการสถานี / Threshold</h3>
+      <ol>
+        <li><strong>Sync สถานี</strong> — กดปุ่ม "🔄 Sync สถานี" ในแท็บ 📡 จุดตรวจวัด เพื่อดึงรายการสถานีล่าสุดจาก API</li>
+        <li><strong>เปิด/ปิดสถานี</strong> — กดปุ่ม 🔔/🔕 เพื่อเปิดหรือปิดการแจ้งเตือนของแต่ละสถานี</li>
+        <li><strong>ตั้งค่า Threshold</strong> — กรอกค่า % ที่ต้องการ (1–100) แล้วกดบันทึก เมื่อระดับน้ำเกินค่านี้ระบบจะส่งแจ้งเตือน</li>
+        <li><strong>เพิ่ม/ลบกลุ่ม LINE</strong> — เลือกกลุ่มจาก dropdown เพื่อเพิ่ม หรือกด ✕ เพื่อลบกลุ่มออกจากสถานี</li>
+      </ol>
+      <div class="guide-tip">
+        <strong>💡 Tips:</strong> ค่า threshold ที่แนะนำคือ 80% สำหรับการเตือนล่วงหน้า หรือ 70% หากต้องการเตือนเร็วขึ้น
       </div>
     </div>
 
@@ -708,6 +798,5 @@ function isTab(string $tab): bool {
   <?php endif ?>
 
 </div>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

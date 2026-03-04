@@ -37,7 +37,7 @@ function linePushMessage(string $message, string $groupId = LINE_GROUP_ID): arra
 }
 
 /**
- * ส่ง Flex Message การ์ดแจ้งเตือนน้ำท่วม
+ * ส่ง Flex Message การ์ดแจ้งเตือนน้ำท่วม (Mega bubble + Progress Bar)
  *
  * @param string $station     ชื่อสถานี
  * @param float  $lat         ละติจูด
@@ -59,94 +59,209 @@ function linePushFloodAlert(
     string $uri       = ''
 ): array {
     $severityConfig = [
-        'normal'   => ['color' => '#16B46D', 'label' => 'ปกติ',      'icon' => '🟢'],
-        'watch'    => ['color' => '#F0C040', 'label' => 'เฝ้าระวัง', 'icon' => '🟡'],
-        'critical' => ['color' => '#D9534F', 'label' => 'วิกฤต',     'icon' => '🔴'],
+        'normal'   => [
+            'color'    => '#1a7f37',
+            'bgColor'  => '#dafbe1',
+            'barColor' => '#1a7f37',
+            'label'    => 'ปกติ',
+            'icon'     => '🟢',
+        ],
+        'watch'    => [
+            'color'    => '#9a6700',
+            'bgColor'  => '#fff8c5',
+            'barColor' => '#bf8700',
+            'label'    => 'เฝ้าระวัง',
+            'icon'     => '🟡',
+        ],
+        'critical' => [
+            'color'    => '#cf222e',
+            'bgColor'  => '#ffebe9',
+            'barColor' => '#cf222e',
+            'label'    => 'วิกฤต',
+            'icon'     => '🔴',
+        ],
     ];
 
     $cfg     = $severityConfig[$severity] ?? $severityConfig['watch'];
     $now     = date('d/m/Y H:i');
-    $percent = $bankLevel > 0 ? min(round(($waterLevel / $bankLevel) * 100, 1), 100) : 0;
+    $percent = $bankLevel > 0 ? round(($waterLevel / $bankLevel) * 100, 1) : 0;
+    $percentCapped = min($percent, 100);
     $mapsUrl = "https://www.google.com/maps?q={$lat},{$lon}";
 
-    $row = fn(string $label, string $value) => [
-        'type'    => 'box',
-        'layout'  => 'horizontal',
-        'contents' => [
-            ['type' => 'text', 'text' => $label, 'color' => '#888888', 'flex' => 4, 'size' => 'sm'],
-            ['type' => 'text', 'text' => $value,  'color' => '#1a1a1a', 'flex' => 5, 'size' => 'sm', 'weight' => 'bold'],
-        ],
-    ];
+    // Progress bar: filled portion (max 100%)
+    $barWidth = max(2, (int)$percentCapped);
 
     $flex = [
         'type'   => 'bubble',
-        'size'   => 'kilo',
-        'styles' => [
-            'header' => ['backgroundColor' => $cfg['color']],
-        ],
+        'size'   => 'mega',
         'header' => [
-            'type'     => 'box',
-            'layout'   => 'horizontal',
+            'type'       => 'box',
+            'layout'     => 'vertical',
+            'paddingAll' => '20px',
+            'background' => [
+                'type'       => 'linearGradient',
+                'angle'      => '135deg',
+                'startColor' => $cfg['color'],
+                'endColor'   => $cfg['color'] . 'cc',
+            ],
             'contents' => [
                 [
-                    'type'    => 'text',
-                    'text'    => '🌊 แจ้งเตือนน้ำท่วม',
-                    'color'   => '#ffffff',
-                    'size'    => 'md',
-                    'weight'  => 'bold',
-                    'flex'    => 1,
+                    'type'     => 'box',
+                    'layout'   => 'horizontal',
+                    'contents' => [
+                        [
+                            'type'   => 'text',
+                            'text'   => '🌊 แจ้งเตือนระดับน้ำ',
+                            'color'  => '#ffffff',
+                            'size'   => 'lg',
+                            'weight' => 'bold',
+                            'flex'   => 1,
+                        ],
+                    ],
                 ],
                 [
-                    'type'   => 'text',
-                    'text'   => $cfg['icon'] . ' ' . $cfg['label'],
-                    'color'  => '#ffffff',
-                    'size'   => 'md',
-                    'weight' => 'bold',
-                    'align'  => 'end',
+                    'type'     => 'box',
+                    'layout'   => 'horizontal',
+                    'margin'   => 'md',
+                    'contents' => [
+                        [
+                            'type'            => 'text',
+                            'text'            => $cfg['icon'] . '  ' . $cfg['label'],
+                            'color'           => '#ffffff',
+                            'size'            => 'xxl',
+                            'weight'          => 'bold',
+                        ],
+                    ],
                 ],
             ],
         ],
         'body' => [
-            'type'      => 'box',
-            'layout'    => 'vertical',
-            'spacing'   => 'sm',
-            'paddingAll' => '16px',
-            'contents'  => [
+            'type'       => 'box',
+            'layout'     => 'vertical',
+            'spacing'    => 'md',
+            'paddingAll' => '20px',
+            'contents'   => [
+                // Station name
                 [
                     'type'   => 'text',
                     'text'   => $station,
-                    'size'   => 'lg',
+                    'size'   => 'xl',
                     'weight' => 'bold',
-                    'color'  => '#1a1a1a',
+                    'color'  => '#1f2328',
                     'wrap'   => true,
                 ],
-                ['type' => 'separator', 'color' => '#eeeeee', 'margin' => 'sm'],
-                $row('📍 พิกัด',         "{$lat}, {$lon}"),
-                $row('💧 ระดับน้ำ',      number_format($waterLevel, 2) . ' ม.'),
-                $row('🏔️ ขอบตลิ่ง',     number_format($bankLevel, 2) . ' ม.'),
-                $row('📊 เต็ม',          $percent . '%'),
-                ['type' => 'separator', 'color' => '#eeeeee', 'margin' => 'sm'],
+                ['type' => 'separator', 'color' => '#e5e7eb'],
+                // Data rows
                 [
-                    'type'  => 'text',
-                    'text'  => '🕐 ' . $now,
-                    'color' => '#aaaaaa',
-                    'size'  => 'xs',
+                    'type'     => 'box',
+                    'layout'   => 'vertical',
+                    'spacing'  => 'sm',
+                    'margin'   => 'md',
+                    'contents' => [
+                        [
+                            'type'     => 'box',
+                            'layout'   => 'horizontal',
+                            'contents' => [
+                                ['type' => 'text', 'text' => '💧 ระดับน้ำ', 'color' => '#656d76', 'size' => 'md', 'flex' => 5],
+                                ['type' => 'text', 'text' => number_format($waterLevel, 2) . ' ม.', 'color' => '#1f2328', 'size' => 'md', 'weight' => 'bold', 'align' => 'end', 'flex' => 4],
+                            ],
+                        ],
+                        [
+                            'type'     => 'box',
+                            'layout'   => 'horizontal',
+                            'contents' => [
+                                ['type' => 'text', 'text' => '🏔️ ขอบตลิ่ง', 'color' => '#656d76', 'size' => 'md', 'flex' => 5],
+                                ['type' => 'text', 'text' => number_format($bankLevel, 2) . ' ม.', 'color' => '#1f2328', 'size' => 'md', 'weight' => 'bold', 'align' => 'end', 'flex' => 4],
+                            ],
+                        ],
+                        [
+                            'type'     => 'box',
+                            'layout'   => 'horizontal',
+                            'contents' => [
+                                ['type' => 'text', 'text' => '📊 ระดับ', 'color' => '#656d76', 'size' => 'md', 'flex' => 5],
+                                ['type' => 'text', 'text' => $percent . '%', 'color' => $cfg['color'], 'size' => 'lg', 'weight' => 'bold', 'align' => 'end', 'flex' => 4],
+                            ],
+                        ],
+                    ],
+                ],
+                // Progress bar
+                [
+                    'type'       => 'box',
+                    'layout'     => 'vertical',
+                    'margin'     => 'lg',
+                    'contents'   => [
+                        // Bar background
+                        [
+                            'type'            => 'box',
+                            'layout'          => 'vertical',
+                            'contents'        => [
+                                // Bar fill
+                                [
+                                    'type'            => 'box',
+                                    'layout'          => 'vertical',
+                                    'contents'        => [['type' => 'filler']],
+                                    'backgroundColor' => $cfg['barColor'],
+                                    'height'          => '12px',
+                                    'width'           => $barWidth . '%',
+                                    'cornerRadius'    => '6px',
+                                ],
+                            ],
+                            'backgroundColor' => '#e5e7eb',
+                            'height'          => '12px',
+                            'cornerRadius'    => '6px',
+                        ],
+                        // Bar label
+                        [
+                            'type'     => 'box',
+                            'layout'   => 'horizontal',
+                            'margin'   => 'sm',
+                            'contents' => [
+                                ['type' => 'text', 'text' => '0%', 'size' => 'xxs', 'color' => '#b0b8c1', 'flex' => 1],
+                                ['type' => 'text', 'text' => $percent . '%', 'size' => 'sm', 'color' => $cfg['color'], 'weight' => 'bold', 'align' => 'center', 'flex' => 2],
+                                ['type' => 'text', 'text' => '100%', 'size' => 'xxs', 'color' => '#b0b8c1', 'align' => 'end', 'flex' => 1],
+                            ],
+                        ],
+                    ],
+                ],
+                ['type' => 'separator', 'color' => '#e5e7eb'],
+                // Timestamp
+                [
+                    'type'   => 'text',
+                    'text'   => '🕐 ' . $now,
+                    'color'  => '#b0b8c1',
+                    'size'   => 'sm',
+                    'margin' => 'sm',
                 ],
             ],
         ],
         'footer' => [
-            'type'     => 'box',
-            'layout'   => 'vertical',
-            'contents' => [
+            'type'       => 'box',
+            'layout'     => 'horizontal',
+            'spacing'    => 'md',
+            'paddingAll' => '16px',
+            'contents'   => [
                 [
-                    'type'   => 'button',
-                    'style'  => 'link',
-                    'height' => 'sm',
-                    'action' => [
+                    'type'    => 'button',
+                    'style'   => 'secondary',
+                    'height'  => 'sm',
+                    'action'  => [
                         'type'  => 'uri',
-                        'label' => $uri ? 'ดูเพิ่มเติม' : 'ดูตำแหน่งบนแผนที่',
+                        'label' => '📍 ดูแผนที่',
+                        'uri'   => $mapsUrl,
+                    ],
+                    'flex' => 1,
+                ],
+                [
+                    'type'    => 'button',
+                    'style'   => 'primary',
+                    'color'   => $cfg['color'],
+                    'height'  => 'sm',
+                    'action'  => [
+                        'type'  => 'uri',
+                        'label' => '🔗 ดูข้อมูล',
                         'uri'   => $uri ? "https://www.cmuccdc.org/floodboy/{$uri}" : $mapsUrl,
                     ],
+                    'flex' => 1,
                 ],
             ],
         ],
@@ -157,7 +272,7 @@ function linePushFloodAlert(
         'messages' => [
             [
                 'type'     => 'flex',
-                'altText'  => "แจ้งเตือนน้ำท่วม: {$station} {$percent}% ({$cfg['label']})",
+                'altText'  => "🌊 แจ้งเตือนระดับน้ำ: {$station} {$percent}% ({$cfg['label']})",
                 'contents' => $flex,
             ]
         ]
