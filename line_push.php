@@ -44,8 +44,9 @@ function linePushMessage(string $message, string $groupId = LINE_GROUP_ID): arra
  * @param float  $lon         ลองจิจูด
  * @param float  $waterLevel  ความสูงของน้ำ (เมตร)
  * @param float  $bankLevel   ความสูงขอบตลิ่ง (เมตร)
- * @param string $severity    ระดับความรุนแรง: normal | watch | warning | critical
+ * @param string $severity    ระดับความรุนแรง: normal | watch | critical
  * @param string $groupId     Group ID
+ * @param string $uri         URI สำหรับลิงก์ CMUCCDC (e.g. "fb001")
  */
 function linePushFloodAlert(
     string $station,
@@ -53,17 +54,17 @@ function linePushFloodAlert(
     float  $lon,
     float  $waterLevel,
     float  $bankLevel,
-    string $severity  = 'warning',
-    string $groupId   = LINE_GROUP_ID
+    string $severity  = 'watch',
+    string $groupId   = LINE_GROUP_ID,
+    string $uri       = ''
 ): array {
     $severityConfig = [
-        'normal'   => ['color' => '#27ACB2', 'label' => 'ปกติ',      'icon' => '🟢'],
+        'normal'   => ['color' => '#16B46D', 'label' => 'ปกติ',      'icon' => '🟢'],
         'watch'    => ['color' => '#F0C040', 'label' => 'เฝ้าระวัง', 'icon' => '🟡'],
-        'warning'  => ['color' => '#FF7D00', 'label' => 'เตือนภัย',  'icon' => '🟠'],
         'critical' => ['color' => '#D9534F', 'label' => 'วิกฤต',     'icon' => '🔴'],
     ];
 
-    $cfg     = $severityConfig[$severity] ?? $severityConfig['warning'];
+    $cfg     = $severityConfig[$severity] ?? $severityConfig['watch'];
     $now     = date('d/m/Y H:i');
     $percent = $bankLevel > 0 ? min(round(($waterLevel / $bankLevel) * 100, 1), 100) : 0;
     $mapsUrl = "https://www.google.com/maps?q={$lat},{$lon}";
@@ -143,8 +144,8 @@ function linePushFloodAlert(
                     'height' => 'sm',
                     'action' => [
                         'type'  => 'uri',
-                        'label' => 'ดูตำแหน่งบนแผนที่',
-                        'uri'   => $mapsUrl,
+                        'label' => $uri ? 'ดูเพิ่มเติม' : 'ดูตำแหน่งบนแผนที่',
+                        'uri'   => $uri ? "https://www.cmuccdc.org/floodboy/{$uri}" : $mapsUrl,
                     ],
                 ],
             ],
