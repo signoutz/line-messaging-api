@@ -25,9 +25,17 @@ function getDB(): PDO
         enabled TINYINT DEFAULT 1,
         group_ids TEXT,
         threshold DOUBLE DEFAULT 80,
+        alert_interval INT DEFAULT 60,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+
+    // Migrate: add alert_interval column if missing
+    try {
+        $db->exec('ALTER TABLE station_config ADD COLUMN alert_interval INT DEFAULT 60 AFTER threshold');
+    } catch (PDOException $e) {
+        // Column already exists — ignore
+    }
 
     $db->exec('CREATE TABLE IF NOT EXISTS line_groups (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -40,6 +48,13 @@ function getDB(): PDO
     $stmt = $db->prepare('INSERT IGNORE INTO line_groups (group_id, group_name) VALUES (?, ?)');
     $stmt->execute([LINE_GROUP_ID, 'กลุ่มหลัก (default)']);
 
+    $db->exec('CREATE TABLE IF NOT EXISTS summary_config (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        group_id VARCHAR(100),
+        enabled TINYINT DEFAULT 1,
+        UNIQUE KEY (group_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+
     $db->exec('CREATE TABLE IF NOT EXISTS alert_log (
         id INT AUTO_INCREMENT PRIMARY KEY,
         station_id VARCHAR(50),
@@ -48,10 +63,17 @@ function getDB(): PDO
         INDEX idx_station_alerted (station_id, alerted_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
 
+    $db->exec('CREATE TABLE IF NOT EXISTS alert_rules (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        station_id VARCHAR(50),
+        threshold DOUBLE NOT NULL,
+        alert_interval INT NOT NULL DEFAULT 60,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY unique_station_threshold (station_id, threshold)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+
     return $db;
 }
-
-// เมื่อรันตรงจาก CLI → ทดสอบสร้าง DB
 if (php_sapi_name() === 'cli' && realpath($argv[0] ?? '') === realpath(__FILE__)) {
     try {
         $db = getDB();

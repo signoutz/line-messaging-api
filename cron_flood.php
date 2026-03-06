@@ -3,7 +3,7 @@
 require_once __DIR__ . '/database.php';
 require_once __DIR__ . '/line_push.php';
 
-$apiUrl = 'https://www.cmuccdc.org/api/floodboy/lasted';
+$apiUrl = 'https://www.cmuccdc.org/api/floodboy/realtime';
 
 echo "[" . date('Y-m-d H:i:s') . "] cron_flood started<br>";
 
@@ -35,6 +35,7 @@ foreach ($items as $item) {
     $stationId   = (string)($item['id'] ?? '');
     $stationName = $item['name'] ?? '';
     $uri         = $item['uri'] ?? '';
+    $logDatetime = $item['log_datetime'] ?? '';
     $lat         = (float)($item['latitude'] ?? 0);
     $lon         = (float)($item['longitude'] ?? 0);
     $waterLevel  = (float)($item['water_level'] ?? 0);
@@ -57,6 +58,11 @@ foreach ($items as $item) {
         $defaultGroups = json_encode([LINE_GROUP_ID]);
         $stmt = $db->prepare('INSERT INTO station_config (station_id, station_name, uri, enabled, group_ids, threshold) VALUES (?, ?, ?, 1, ?, 80)');
         $stmt->execute([$stationId, $stationName, $uri, $defaultGroups]);
+        // สร้าง default alert rules
+        $stmt = $db->prepare('INSERT IGNORE INTO alert_rules (station_id, threshold, alert_interval) VALUES (?, 80, 60)');
+        $stmt->execute([$stationId]);
+        $stmt = $db->prepare('INSERT IGNORE INTO alert_rules (station_id, threshold, alert_interval) VALUES (?, 100, 5)');
+        $stmt->execute([$stationId]);
         $config = [
             'station_id' => $stationId,
             'enabled'    => 1,
@@ -72,23 +78,47 @@ foreach ($items as $item) {
         continue;
     }
 
-    $threshold = (float)$config['threshold'];
+    // ดึง alert rules เรียงจาก threshold สูง -> ต่ำ
+    $stmt = $db->prepare('SELECT * FROM alert_rules WHERE station_id = ? ORDER BY threshold DESC');
+    $stmt->execute([$stationId]);
+    $rules = $stmt->fetchAll();
+
+    // ถ้าไม่มี rules ให้สร้าง default
+    if (empty($rules)) {
+        $stmt = $db->prepare('INSERT IGNORE INTO alert_rules (station_id, threshold, alert_interval) VALUES (?, 80, 60)');
+        $stmt->execute([$stationId]);
+        $stmt = $db->prepare('INSERT IGNORE INTO alert_rules (station_id, threshold, alert_interval) VALUES (?, 100, 5)');
+        $stmt->execute([$stationId]);
+        $stmt = $db->prepare('SELECT * FROM alert_rules WHERE station_id = ? ORDER BY threshold DESC');
+        $stmt->execute([$stationId]);
+        $rules = $stmt->fetchAll();
+    }
+
+    // หา rule แรกที่ percent >= threshold (ใช้เงื่อนไขที่ strict ที่สุด)
+    $matchedRule = null;
+    foreach ($rules as $rule) {
+        if ($percent >= $rule['threshold']) {
+            $matchedRule = $rule;
+            break;
+        }
+    }
 
     // กำหนด severity
     if ($percent >= 100) {
         $severity = 'critical';
-    } elseif ($percent > $threshold) {
+    } elseif ($matchedRule) {
         $severity = 'watch';
     } else {
         $severity = 'normal';
         $normalCount++;
-        echo "  OK [{$stationName}] {$percent}% (threshold={$threshold}%)<br>";
+        echo "  OK [{$stationName}] {$percent}%<br>";
         continue; // ไม่แจ้งเตือน
     }
 
-    // เช็ค alert_log ว่าเคยแจ้งใน 1 ชม.ล่าสุดหรือไม่
-    $stmt = $db->prepare('SELECT COUNT(*) FROM alert_log WHERE station_id = ? AND alerted_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)');
-    $stmt->execute([$stationId]);
+    // ใช้ interval จาก rule ที่ match หรือ default
+    $interval = $matchedRule ? (int)$matchedRule['alert_interval'] : 60;
+    $stmt = $db->prepare('SELECT COUNT(*) FROM alert_log WHERE station_id = ? AND alerted_at > DATE_SUB(NOW(), INTERVAL ? MINUTE)');
+    $stmt->execute([$stationId, $interval]);
     $recentAlerts = (int)$stmt->fetchColumn();
 
     if ($recentAlerts > 0) {
@@ -109,7 +139,8 @@ foreach ($items as $item) {
             $bankLevel,
             $severity,
             $groupId,
-            $uri
+            $uri,
+            $logDatetime
         );
 
         $status = $result['success'] ? 'OK' : 'FAIL(' . $result['status'] . ')';

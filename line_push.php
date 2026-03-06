@@ -1,7 +1,5 @@
 <?php
-
 require_once __DIR__ . '/config.php';
-
 /**
  * ส่งข้อความ text ไปยัง LINE group
  */
@@ -27,7 +25,6 @@ function linePushMessage(string $message, string $groupId = LINE_GROUP_ID): arra
 
     $body       = curl_exec($ch);
     $statusCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
 
     return [
         'success' => $statusCode === 200,
@@ -55,8 +52,9 @@ function linePushFloodAlert(
     float  $waterLevel,
     float  $bankLevel,
     string $severity  = 'watch',
-    string $groupId   = LINE_GROUP_ID,
-    string $uri       = ''
+    string $groupId      = LINE_GROUP_ID,
+    string $uri          = '',
+    string $logDatetime  = ''
 ): array {
     $severityConfig = [
         'normal'   => [
@@ -83,7 +81,12 @@ function linePushFloodAlert(
     ];
 
     $cfg     = $severityConfig[$severity] ?? $severityConfig['watch'];
-    $now     = date('d/m/Y H:i');
+    if ($logDatetime !== '') {
+        $dt = DateTime::createFromFormat('Y-m-d H:i:s', $logDatetime);
+        $now = $dt ? $dt->format('d/m/Y H:i') : date('d/m/Y H:i');
+    } else {
+        $now = date('d/m/Y H:i');
+    }
     $percent = $bankLevel > 0 ? round(($waterLevel / $bankLevel) * 100, 1) : 0;
     $percentCapped = min($percent, 100);
     $mapsUrl = "https://www.google.com/maps?q={$lat},{$lon}";
@@ -291,11 +294,154 @@ function linePushFloodAlert(
 
     $body       = curl_exec($ch);
     $statusCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
 
     return [
         'success' => $statusCode === 200,
         'status'  => $statusCode,
         'body'    => $body,
     ];
+}
+
+/**
+ * ส่ง Flex Message ตารางสรุประดับน้ำทุกสถานี
+ *
+ * @param array  $stations  array ของ ['name'=>, 'water_level'=>, 'bank_level'=>, 'percent'=>, 'severity'=>]
+ * @param string $groupId   Group ID
+ */
+function linePushFloodSummary(array $stations, string $groupId): array
+{
+    $severityConfig = [
+        'normal'   => ['color' => '#1a7f37', 'icon' => '🟢'],
+        'watch'    => ['color' => '#bf8700', 'icon' => '🟡'],
+        'critical' => ['color' => '#cf222e', 'icon' => '🔴'],
+    ];
+
+    // หา log_datetime ล่าสุดจากทุกสถานี
+    $latestDt = '';
+    foreach ($stations as $s) {
+        if (!empty($s['log_datetime']) && $s['log_datetime'] > $latestDt) {
+            $latestDt = $s['log_datetime'];
+        }
+    }
+    if ($latestDt !== '') {
+        $dt = DateTime::createFromFormat('Y-m-d H:i:s', $latestDt);
+        $now = $dt ? $dt->format('d/m/Y H:i') : date('d/m/Y H:i');
+    } else {
+        $now = date('d/m/Y H:i');
+    }
+    $watchCount = 0;
+    $critCount = 0;
+    foreach ($stations as $s) {
+        if ($s['severity'] === 'watch') $watchCount++;
+        if ($s['severity'] === 'critical') $critCount++;
+    }
+
+    $maxPerMessage = 25;
+    $chunks = array_chunk($stations, $maxPerMessage);
+    $messages = [];
+
+    foreach ($chunks as $ci => $chunk) {
+        $rows = [];
+
+        $rows[] = [
+            'type'    => 'box',
+            'layout'  => 'horizontal',
+            'spacing' => 'sm',
+            'contents' => [
+                ['type' => 'text', 'text' => 'สถานี', 'size' => 'xxs', 'color' => '#656d76', 'weight' => 'bold', 'flex' => 6],
+                ['type' => 'text', 'text' => '%', 'size' => 'xxs', 'color' => '#656d76', 'weight' => 'bold', 'align' => 'end', 'flex' => 2],
+                ['type' => 'text', 'text' => 'ระดับ(ม.)', 'size' => 'xxs', 'color' => '#656d76', 'weight' => 'bold', 'align' => 'end', 'flex' => 3],
+            ],
+        ];
+        $rows[] = ['type' => 'separator', 'color' => '#e5e7eb'];
+
+        foreach ($chunk as $s) {
+            $cfg = $severityConfig[$s['severity']] ?? $severityConfig['normal'];
+            $rows[] = [
+                'type'    => 'box',
+                'layout'  => 'horizontal',
+                'spacing' => 'sm',
+                'margin'  => 'sm',
+                'contents' => [
+                    ['type' => 'text', 'text' => $cfg['icon'] . ' ' . $s['name'], 'size' => 'xs', 'color' => '#1f2328', 'flex' => 6, 'wrap' => true],
+                    ['type' => 'text', 'text' => $s['percent'] . '%', 'size' => 'xs', 'color' => $cfg['color'], 'weight' => 'bold', 'align' => 'end', 'flex' => 2],
+                    ['type' => 'text', 'text' => number_format($s['water_level'], 2), 'size' => 'xs', 'color' => '#656d76', 'align' => 'end', 'flex' => 3],
+                ],
+            ];
+        }
+
+        $pageLabel = count($chunks) > 1 ? ' (' . ($ci + 1) . '/' . count($chunks) . ')' : '';
+
+        $flex = [
+            'type'   => 'bubble',
+            'size'   => 'mega',
+            'header' => [
+                'type'       => 'box',
+                'layout'     => 'vertical',
+                'paddingAll' => '20px',
+                'backgroundColor' => '#24292f',
+                'contents'   => [
+                    ['type' => 'text', 'text' => '📊 รายงานสรุประดับน้ำ' . $pageLabel, 'color' => '#ffffff', 'size' => 'lg', 'weight' => 'bold'],
+                    ['type' => 'text', 'text' => '🕐 ' . $now, 'color' => '#8b949e', 'size' => 'sm', 'margin' => 'sm'],
+                ],
+            ],
+            'body' => [
+                'type'       => 'box',
+                'layout'     => 'vertical',
+                'spacing'    => 'none',
+                'paddingAll' => '16px',
+                'contents'   => $rows,
+            ],
+            'footer' => [
+                'type'       => 'box',
+                'layout'     => 'horizontal',
+                'paddingAll' => '16px',
+                'backgroundColor' => '#f6f8fa',
+                'contents'   => [
+                    ['type' => 'text', 'text' => 'ทั้งหมด ' . count($stations) . ' สถานี', 'size' => 'xs', 'color' => '#656d76', 'flex' => 1],
+                    ['type' => 'text', 'text' => "🟡 {$watchCount}  🔴 {$critCount}", 'size' => 'xs', 'color' => '#1f2328', 'weight' => 'bold', 'align' => 'end', 'flex' => 1],
+                ],
+            ],
+        ];
+
+        $messages[] = [
+            'type'     => 'flex',
+            'altText'  => "📊 รายงานสรุประดับน้ำ {$now} — เฝ้าระวัง {$watchCount} วิกฤต {$critCount}",
+            'contents' => $flex,
+        ];
+    }
+
+    $messageChunks = array_chunk($messages, 5);
+    $lastResult = ['success' => true, 'status' => 200, 'body' => ''];
+
+    foreach ($messageChunks as $msgBatch) {
+        $payload = json_encode([
+            'to'       => $groupId,
+            'messages' => $msgBatch,
+        ]);
+
+        $ch = curl_init('https://api.line.me/v2/bot/message/push');
+        curl_setopt_array($ch, [
+            CURLOPT_POST           => true,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER     => [
+                'Content-Type: application/json',
+                'Authorization: Bearer ' . LINE_CHANNEL_ACCESS_TOKEN,
+            ],
+            CURLOPT_POSTFIELDS => $payload,
+        ]);
+
+        $body       = curl_exec($ch);
+        $statusCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+        $lastResult = [
+            'success' => $statusCode === 200,
+            'status'  => $statusCode,
+            'body'    => $body,
+        ];
+
+        if ($statusCode !== 200) break;
+    }
+
+    return $lastResult;
 }
