@@ -68,7 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['password']) && !isse
 
     // Determine which tab to redirect back to
     $redirectTab = $currentTab;
-    if (in_array($action, ['sync', 'toggle', 'threshold', 'interval', 'add_group', 'remove_group', 'toggle_summary', 'add_summary_group', 'add_rule', 'edit_rule', 'delete_rule'])) {
+    if (in_array($action, ['sync', 'toggle', 'threshold', 'interval', 'add_group', 'remove_group', 'toggle_summary', 'add_summary_group', 'add_rule', 'edit_rule', 'delete_rule', 'add_scheduled_hour', 'delete_scheduled_hour'])) {
         $redirectTab = 'stations';
     } elseif (in_array($action, ['rename_group', 'refresh_groups', 'scan_logs'])) {
         $redirectTab = 'groups';
@@ -113,6 +113,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['password']) && !isse
         $stmt = $db->prepare('DELETE FROM alert_rules WHERE id = ?');
         $stmt->execute([$ruleId]);
         $message = 'ลบเงื่อนไขแจ้งเตือนเรียบร้อย';
+    } elseif ($action === 'add_scheduled_hour') {
+        $stationId = $_POST['station_id'] ?? '';
+        $hour = (int)($_POST['hour'] ?? -1);
+        if ($stationId !== '' && $hour >= 0 && $hour <= 23) {
+            $stmt = $db->prepare('INSERT IGNORE INTO scheduled_hours (station_id, hour) VALUES (?, ?)');
+            $stmt->execute([$stationId, $hour]);
+            $message = 'เพิ่มเวลาแจ้งเตือนเรียบร้อย';
+        }
+    } elseif ($action === 'delete_scheduled_hour') {
+        $stationId = $_POST['station_id'] ?? '';
+        $hour = (int)($_POST['hour'] ?? -1);
+        if ($stationId !== '' && $hour >= 0 && $hour <= 23) {
+            $stmt = $db->prepare('DELETE FROM scheduled_hours WHERE station_id = ? AND hour = ?');
+            $stmt->execute([$stationId, $hour]);
+            $message = 'ลบเวลาแจ้งเตือนเรียบร้อย';
+        }
     } elseif ($action === 'toggle_summary') {
         $groupId = trim($_POST['group_id'] ?? '');
         $enabled = (int)($_POST['enabled'] ?? 0);
@@ -210,6 +226,13 @@ foreach ($stations as $s) {
         // ดึง rules ที่สร้างใหม่
         $stationRules[$sid] = getAlertRules($db, $sid);
     }
+}
+
+// --- Load scheduled hours ---
+$stationScheduledHours = [];
+$allScheduledHours = $db->query('SELECT * FROM scheduled_hours ORDER BY station_id, hour ASC')->fetchAll();
+foreach ($allScheduledHours as $sh) {
+    $stationScheduledHours[$sh['station_id']][] = (int)$sh['hour'];
 }
 
 // --- Load summary config ---
@@ -755,6 +778,147 @@ function isTab(string $tab): bool {
         border-color: #d0d7de;
     }
 
+    .btn-scheduled-hour {
+        color: #0550ae;
+        background: #ddf4ff;
+        border: 1px solid #54aeff;
+        border-radius: 20px;
+        padding: 1px 8px;
+        font-size: 11px;
+        line-height: 18px;
+        cursor: pointer;
+    }
+
+    .btn-scheduled-hour:hover {
+        color: #fff;
+        background: #cf222e;
+        border-color: #cf222e;
+    }
+
+    .btn-primary-outline {
+        color: #1a7f37;
+        background: transparent;
+        border-color: rgba(27, 31, 36, .15);
+    }
+
+    .btn-primary-outline:hover {
+        color: #fff;
+        background: #1a7f37;
+        border-color: #1a7f37;
+    }
+
+    /* Station Card */
+    .station-card {
+        border: 1px solid #d0d7de;
+        border-radius: 6px;
+        background: #fff;
+        margin-bottom: 12px;
+    }
+
+    .station-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 16px;
+        background: #f6f8fa;
+        border-bottom: 1px solid #d0d7de;
+        border-radius: 6px 6px 0 0;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .station-card-header .station-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .station-card-header .station-name {
+        font-weight: 600;
+        font-size: 14px;
+    }
+
+    .station-card-header .station-meta {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .station-card-body {
+        padding: 12px 16px;
+    }
+
+    .station-card-body .station-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 16px;
+    }
+
+    .station-section {
+        min-width: 0;
+    }
+
+    .station-section-title {
+        font-size: 11px;
+        font-weight: 600;
+        color: #656d76;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 6px;
+        padding-bottom: 4px;
+        border-bottom: 1px solid #eaeef2;
+    }
+
+    .live-data-row {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+
+    .live-data-item {
+        display: flex;
+        flex-direction: column;
+        min-width: 80px;
+    }
+
+    .live-data-item .label {
+        font-size: 11px;
+        color: #656d76;
+    }
+
+    .live-data-item .value {
+        font-size: 14px;
+        font-weight: 600;
+        font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    }
+
+    .badge-uri {
+        font-size: 11px;
+        padding: 1px 8px;
+        border-radius: 20px;
+        background: #f6f8fa;
+        border: 1px solid #d0d7de;
+        color: #0969da;
+        text-decoration: none;
+    }
+
+    .badge-uri:hover {
+        background: #ddf4ff;
+    }
+
+    .badge-id {
+        font-size: 11px;
+        color: #656d76;
+        font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    }
+
+    .badge-updated {
+        font-size: 11px;
+        color: #656d76;
+    }
+
     /* Form controls */
     .form-control {
         padding: 3px 12px;
@@ -1037,168 +1201,173 @@ function isTab(string $tab): bool {
                 </form>
             </div>
             <?php if ($stations): ?>
-            <div class="overflow-auto">
-                <table class="gh-table">
-                    <thead>
-                        <tr>
-                            <th>สถานี</th>
-                            <th>URI</th>
-                            <th style="width:90px">ระดับน้ำ (ม.)</th>
-                            <th style="width:90px">ขอบตลิ่ง (ม.)</th>
-                            <th style="width:60px">%</th>
-                            <th style="width:80px">สถานะ</th>
-                            <th style="width:280px">เงื่อนไขแจ้งเตือน</th>
-                            <th>LINE Groups</th>
-                            <th style="width:140px">อัปเดตล่าสุด</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($stations as $s): ?>
-                        <tr>
-                            <td>
-                                <span class="text-bold"><?= htmlspecialchars($s['station_name']) ?></span>
-                                <br><span class="text-small text-muted">ID:
-                                    <?= htmlspecialchars($s['station_id']) ?></span>
-                            </td>
-                            <td>
-                                <?php if ($s['uri']): ?>
-                                <a href="https://www.cmuccdc.org/floodboy/<?= htmlspecialchars($s['uri']) ?>"
-                                    target="_blank">
-                                    <?= htmlspecialchars($s['uri']) ?>
-                                </a>
-                                <?php else: ?>
-                                <span class="text-muted">-</span>
-                                <?php endif ?>
-                            </td>
-                            <?php
-              $live = $liveData[$s['station_id']] ?? null;
-              if ($live):
-                  $pct = $live['percent'];
-                  $pctClass = $pct >= 100 ? 'text-danger' : ($pct > $s['threshold'] ? 'text-warning' : 'text-success');
+            <?php foreach ($stations as $s):
+                $live = $liveData[$s['station_id']] ?? null;
+                $rules = $stationRules[$s['station_id']] ?? [];
+                $hours = $stationScheduledHours[$s['station_id']] ?? [];
+                $groups = json_decode($s['group_ids'] ?? '[]', true) ?: [];
+                $pct = $live ? $live['percent'] : null;
+                $pctClass = $pct !== null ? ($pct >= 100 ? 'text-danger' : ($pct > $s['threshold'] ? 'text-warning' : 'text-success')) : '';
             ?>
-                            <td class="text-right mono"><?= number_format($live['water_level'], 2) ?></td>
-                            <td class="text-right mono"><?= number_format($live['bank_level'], 2) ?></td>
-                            <td class="text-right"><span class="<?= $pctClass ?>"><?= $pct ?>%</span></td>
-                            <?php else: ?>
-                            <td class="text-center text-muted">-</td>
-                            <td class="text-center text-muted">-</td>
-                            <td class="text-center text-muted">-</td>
-                            <?php endif ?>
-                            <td>
-                                <form method="post" action="<?= tabUrl('stations') ?>" class="inline">
-                                    <input type="hidden" name="action" value="toggle">
-                                    <input type="hidden" name="station_id"
-                                        value="<?= htmlspecialchars($s['station_id']) ?>">
-                                    <input type="hidden" name="enabled" value="<?= $s['enabled'] ? 0 : 1 ?>">
-                                    <button
-                                        class="btn btn-sm <?= $s['enabled'] ? 'btn-toggle-on' : 'btn-toggle-off' ?>">
-                                        <?= $s['enabled'] ? '🔔 เปิด' : '🔕 ปิด' ?>
-                                    </button>
+            <div class="station-card">
+                <!-- Header: ชื่อ + สถานะ + ข้อมูล live -->
+                <div class="station-card-header">
+                    <div class="station-info">
+                        <form method="post" action="<?= tabUrl('stations') ?>" class="inline">
+                            <input type="hidden" name="action" value="toggle">
+                            <input type="hidden" name="station_id" value="<?= htmlspecialchars($s['station_id']) ?>">
+                            <input type="hidden" name="enabled" value="<?= $s['enabled'] ? 0 : 1 ?>">
+                            <button class="btn btn-sm <?= $s['enabled'] ? 'btn-toggle-on' : 'btn-toggle-off' ?>">
+                                <?= $s['enabled'] ? '🔔' : '🔕' ?>
+                            </button>
+                        </form>
+                        <span class="station-name"><?= htmlspecialchars($s['station_name']) ?></span>
+                        <span class="badge-id">ID: <?= htmlspecialchars($s['station_id']) ?></span>
+                        <?php if ($s['uri']): ?>
+                        <a href="https://www.cmuccdc.org/floodboy/<?= htmlspecialchars($s['uri']) ?>" target="_blank" class="badge-uri"><?= htmlspecialchars($s['uri']) ?></a>
+                        <?php endif ?>
+                    </div>
+                    <div class="station-meta">
+                        <?php if ($live): ?>
+                        <div class="live-data-row">
+                            <div class="live-data-item">
+                                <span class="label">ระดับน้ำ</span>
+                                <span class="value"><?= number_format($live['water_level'], 2) ?> ม.</span>
+                            </div>
+                            <div class="live-data-item">
+                                <span class="label">ขอบตลิ่ง</span>
+                                <span class="value"><?= number_format($live['bank_level'], 2) ?> ม.</span>
+                            </div>
+                            <div class="live-data-item">
+                                <span class="label">สัดส่วน</span>
+                                <span class="value <?= $pctClass ?>"><?= $pct ?>%</span>
+                            </div>
+                        </div>
+                        <?php else: ?>
+                        <span class="text-small text-muted">ไม่มีข้อมูล live</span>
+                        <?php endif ?>
+                        <span class="badge-updated">อัปเดต: <?= htmlspecialchars($s['updated_at'] ?? '-') ?></span>
+                    </div>
+                </div>
+
+                <!-- Body: การตั้งค่า 3 ส่วน -->
+                <div class="station-card-body">
+                    <div class="station-grid">
+
+                        <!-- เงื่อนไขแจ้งเตือน (%) -->
+                        <div class="station-section">
+                            <div class="station-section-title">เงื่อนไขแจ้งเตือน (%)</div>
+                            <div class="alert-rules-list">
+                                <?php foreach ($rules as $rule): ?>
+                                <form method="post" action="<?= tabUrl('stations') ?>" class="d-flex align-center gap-4" style="margin-bottom:4px">
+                                    <input type="hidden" name="action" value="edit_rule">
+                                    <input type="hidden" name="rule_id" value="<?= $rule['id'] ?>">
+                                    <input type="hidden" name="station_id" value="<?= htmlspecialchars($s['station_id']) ?>">
+                                    <span class="text-small text-muted">&gt;</span>
+                                    <input type="number" name="threshold" value="<?= $rule['threshold'] ?>" min="1" max="100" step="1" class="form-control form-control-sm" style="width:55px">
+                                    <span class="text-small text-muted">%→</span>
+                                    <select name="alert_interval" class="form-select" style="width:85px">
+                                        <?php foreach ([5, 10, 15, 30, 60, 90, 120, 180] as $v): ?>
+                                        <option value="<?= $v ?>" <?= (int)$rule['alert_interval'] === $v ? 'selected' : '' ?>><?= $v ?> นาที</option>
+                                        <?php endforeach ?>
+                                    </select>
+                                    <button type="submit" class="btn btn-sm btn-primary-outline" style="padding:0 4px;font-size:10px;line-height:16px" title="บันทึก">✓</button>
+                                    <?php if (count($rules) > 1): ?>
+                                    <button name="action" value="delete_rule" class="btn btn-sm btn-danger-outline" style="padding:0 4px;font-size:10px;line-height:16px" title="ลบ" onclick="return confirm('ลบเงื่อนไขนี้?')">✕</button>
+                                    <?php endif ?>
                                 </form>
-                            </td>
-                            <td>
-                                <?php
-              $rules = $stationRules[$s['station_id']] ?? [];
-              ?>
-                                <div class="alert-rules-list">
-                                    <?php foreach ($rules as $rule): ?>
-                                    <form method="post" action="<?= tabUrl('stations') ?>"
-                                        class="d-flex align-center gap-4 mb-4" style="margin-bottom:4px">
-                                        <input type="hidden" name="action" value="edit_rule">
-                                        <input type="hidden" name="rule_id" value="<?= $rule['id'] ?>">
-                                        <span class="text-small text-muted">&gt;</span>
-                                        <input type="number" name="threshold" value="<?= $rule['threshold'] ?>" min="1"
-                                            max="100" step="1" class="form-control form-control-sm" style="width:60px">
-                                        <span class="text-small text-muted">%</span>
-                                        <span class="text-small text-muted">→</span>
-                                        <select name="alert_interval" class="form-select" style="width:90px">
-                                            <?php foreach ([5, 10, 15, 30, 60, 90, 120, 180] as $v): ?>
-                                            <option value="<?= $v ?>"
-                                                <?= (int)$rule['alert_interval'] === $v ? 'selected' : '' ?>><?= $v ?>
-                                                นาที</option>
-                                            <?php endforeach ?>
-                                        </select>
-                                        <input type="hidden" name="station_id"
-                                            value="<?= htmlspecialchars($s['station_id']) ?>">
-                                        <button type="submit" class="btn btn-sm btn-primary-outline"
-                                            style="padding:0 4px;font-size:10px;line-height:16px"
-                                            title="บันทึก">✓</button>
-                                        <?php if (count($rules) > 1): ?>
-                                        <button name="action" value="delete_rule" class="btn btn-sm btn-danger-outline"
-                                            style="padding:0 4px;font-size:10px;line-height:16px" title="ลบ"
-                                            onclick="return confirm('ลบเงื่อนไขนี้?')">✕</button>
-                                        <?php endif ?>
-                                    </form>
-                                    <?php endforeach ?>
-                                    <form method="post" action="<?= tabUrl('stations') ?>"
-                                        class="d-flex align-center gap-4 mt-4" style="margin-top:4px">
-                                        <input type="hidden" name="action" value="add_rule">
-                                        <input type="hidden" name="station_id"
-                                            value="<?= htmlspecialchars($s['station_id']) ?>">
-                                        <input type="number" name="threshold" value="" min="1" max="100" step="1"
-                                            class="form-control form-control-sm" style="width:60px" placeholder=">%"
-                                            required>
-                                        <span class="text-small text-muted">%</span>
-                                        <span class="text-small text-muted">→</span>
-                                        <select name="alert_interval" class="form-select" style="width:90px">
-                                            <?php foreach ([5, 10, 15, 30, 60, 90, 120, 180] as $v): ?>
-                                            <option value="<?= $v ?>"><?= $v ?> นาที</option>
-                                            <?php endforeach ?>
-                                        </select>
-                                        <button class="btn btn-sm btn-default">+</button>
-                                    </form>
-                                </div>
-                            </td>
-                            <td>
-                                <?php
-              $groups = json_decode($s['group_ids'] ?? '[]', true) ?: [];
-              foreach ($groups as $g):
-                  $gLabel = $groupNameMap[$g] ?? substr($g, 0, 10) . '...';
-              ?>
-                                <div class="d-flex align-center gap-4 mb-0" style="margin-bottom:4px">
-                                    <span class="group-id"
-                                        title="<?= htmlspecialchars($g) ?>"><?= htmlspecialchars($gLabel) ?></span>
-                                    <form method="post" action="<?= tabUrl('stations') ?>" class="inline">
-                                        <input type="hidden" name="action" value="remove_group">
-                                        <input type="hidden" name="station_id"
-                                            value="<?= htmlspecialchars($s['station_id']) ?>">
-                                        <input type="hidden" name="remove_group" value="<?= htmlspecialchars($g) ?>">
-                                        <button class="btn btn-sm btn-danger-outline"
-                                            style="padding:0 4px;font-size:10px;line-height:16px" title="ลบ"
-                                            onclick="return confirm('ลบกลุ่มนี้?')">✕</button>
-                                    </form>
-                                </div>
                                 <?php endforeach ?>
-                                <?php if ($lineGroups): ?>
-                                <form method="post" action="<?= tabUrl('stations') ?>"
-                                    class="d-flex align-center gap-4 mt-4">
-                                    <input type="hidden" name="action" value="add_group">
-                                    <input type="hidden" name="station_id"
-                                        value="<?= htmlspecialchars($s['station_id']) ?>">
-                                    <select name="new_group" class="form-select" style="width:150px">
-                                        <option value="">เพิ่มกลุ่ม...</option>
-                                        <?php foreach ($lineGroups as $lg):
-                      $alreadyAdded = in_array($lg['group_id'], $groups);
-                      $label = $lg['group_name'] ?: substr($lg['group_id'], 0, 15) . '...';
-                  ?>
-                                        <option value="<?= htmlspecialchars($lg['group_id']) ?>"
-                                            <?= $alreadyAdded ? 'disabled' : '' ?>>
-                                            <?= $alreadyAdded ? '✓ ' : '' ?><?= htmlspecialchars($label) ?>
-                                        </option>
+                                <form method="post" action="<?= tabUrl('stations') ?>" class="d-flex align-center gap-4" style="margin-top:4px">
+                                    <input type="hidden" name="action" value="add_rule">
+                                    <input type="hidden" name="station_id" value="<?= htmlspecialchars($s['station_id']) ?>">
+                                    <input type="number" name="threshold" value="" min="1" max="100" step="1" class="form-control form-control-sm" style="width:55px" placeholder=">%" required>
+                                    <span class="text-small text-muted">%→</span>
+                                    <select name="alert_interval" class="form-select" style="width:85px">
+                                        <?php foreach ([5, 10, 15, 30, 60, 90, 120, 180] as $v): ?>
+                                        <option value="<?= $v ?>"><?= $v ?> นาที</option>
                                         <?php endforeach ?>
                                     </select>
                                     <button class="btn btn-sm btn-default">+</button>
                                 </form>
+                            </div>
+                        </div>
+
+                        <!-- แจ้งเตือนตามเวลา -->
+                        <div class="station-section">
+                            <div class="station-section-title">แจ้งเตือนตามเวลา (รายชั่วโมง)</div>
+                            <div class="scheduled-hours-list">
+                                <?php if ($hours): ?>
+                                <div style="margin-bottom:6px">
+                                    <?php foreach ($hours as $h): ?>
+                                    <form method="post" action="<?= tabUrl('stations') ?>" class="inline" style="display:inline-block;margin:0 2px 4px 0">
+                                        <input type="hidden" name="action" value="delete_scheduled_hour">
+                                        <input type="hidden" name="station_id" value="<?= htmlspecialchars($s['station_id']) ?>">
+                                        <input type="hidden" name="hour" value="<?= $h ?>">
+                                        <button class="btn btn-sm btn-scheduled-hour" title="คลิกเพื่อลบ" onclick="return confirm('ลบเวลา <?= sprintf('%02d', $h) ?>:00 ?')"><?= sprintf('%02d', $h) ?>:00 ✕</button>
+                                    </form>
+                                    <?php endforeach ?>
+                                </div>
+                                <?php else: ?>
+                                <div class="text-small text-muted" style="margin-bottom:6px">ยังไม่ได้ตั้งเวลา</div>
                                 <?php endif ?>
-                            </td>
-                            <td><span
-                                    class="text-small text-muted"><?= htmlspecialchars($s['updated_at'] ?? '') ?></span>
-                            </td>
-                        </tr>
-                        <?php endforeach ?>
-                    </tbody>
-                </table>
+                                <form method="post" action="<?= tabUrl('stations') ?>" class="d-flex align-center gap-4">
+                                    <input type="hidden" name="action" value="add_scheduled_hour">
+                                    <input type="hidden" name="station_id" value="<?= htmlspecialchars($s['station_id']) ?>">
+                                    <select name="hour" class="form-select" style="width:90px">
+                                        <option value="">เพิ่ม...</option>
+                                        <?php for ($h = 0; $h <= 23; $h++):
+                                            $alreadySet = in_array($h, $hours);
+                                        ?>
+                                        <option value="<?= $h ?>" <?= $alreadySet ? 'disabled' : '' ?>>
+                                            <?= $alreadySet ? '✓ ' : '' ?><?= sprintf('%02d', $h) ?>:00
+                                        </option>
+                                        <?php endfor ?>
+                                    </select>
+                                    <button class="btn btn-sm btn-default">+</button>
+                                </form>
+                            </div>
+                        </div>
+
+                        <!-- LINE Groups -->
+                        <div class="station-section">
+                            <div class="station-section-title">LINE Groups</div>
+                            <?php foreach ($groups as $g):
+                                $gLabel = $groupNameMap[$g] ?? substr($g, 0, 10) . '...';
+                            ?>
+                            <div class="d-flex align-center gap-4" style="margin-bottom:4px">
+                                <span class="group-id" title="<?= htmlspecialchars($g) ?>"><?= htmlspecialchars($gLabel) ?></span>
+                                <form method="post" action="<?= tabUrl('stations') ?>" class="inline">
+                                    <input type="hidden" name="action" value="remove_group">
+                                    <input type="hidden" name="station_id" value="<?= htmlspecialchars($s['station_id']) ?>">
+                                    <input type="hidden" name="remove_group" value="<?= htmlspecialchars($g) ?>">
+                                    <button class="btn btn-sm btn-danger-outline" style="padding:0 4px;font-size:10px;line-height:16px" title="ลบ" onclick="return confirm('ลบกลุ่มนี้?')">✕</button>
+                                </form>
+                            </div>
+                            <?php endforeach ?>
+                            <?php if ($lineGroups): ?>
+                            <form method="post" action="<?= tabUrl('stations') ?>" class="d-flex align-center gap-4" style="margin-top:4px">
+                                <input type="hidden" name="action" value="add_group">
+                                <input type="hidden" name="station_id" value="<?= htmlspecialchars($s['station_id']) ?>">
+                                <select name="new_group" class="form-select" style="width:150px">
+                                    <option value="">เพิ่มกลุ่ม...</option>
+                                    <?php foreach ($lineGroups as $lg):
+                                        $alreadyAdded = in_array($lg['group_id'], $groups);
+                                        $label = $lg['group_name'] ?: substr($lg['group_id'], 0, 15) . '...';
+                                    ?>
+                                    <option value="<?= htmlspecialchars($lg['group_id']) ?>" <?= $alreadyAdded ? 'disabled' : '' ?>>
+                                        <?= $alreadyAdded ? '✓ ' : '' ?><?= htmlspecialchars($label) ?>
+                                    </option>
+                                    <?php endforeach ?>
+                                </select>
+                                <button class="btn btn-sm btn-default">+</button>
+                            </form>
+                            <?php endif ?>
+                        </div>
+
+                    </div>
+                </div>
             </div>
+            <?php endforeach ?>
             <?php else: ?>
             <div class="Box-body">
                 <p class="text-muted mb-0">ยังไม่มีสถานี — กดปุ่ม "Sync สถานี" เพื่อดึงข้อมูลจาก API</p>
@@ -1386,7 +1555,13 @@ function isTab(string $tab): bool {
                 <ul>
                     <li><strong>แหล่งข้อมูล:</strong> CMU CCDC Floodboy API (ข้อมูลระดับน้ำ realtime)</li>
                     <li><strong>การแจ้งเตือน:</strong> LINE Messaging API (Flex Message)</li>
-                    <li><strong>การทำงาน:</strong> Cron job ทำงานตามรอบที่ตั้งไว้</li>
+                    <li><strong>Cron Jobs:</strong>
+                        <ul>
+                            <li><code>cron_flood.php</code> — แจ้งเตือนตาม % (ทุก 10 นาที)</li>
+                            <li><code>cron_flood_scheduled.php</code> — แจ้งเตือนตามเวลาที่ตั้งไว้ (ทุกชั่วโมง)</li>
+                            <li><code>cron_flood_summary.php</code> — รายงานสรุปประจำวัน (08:00, 16:00)</li>
+                        </ul>
+                    </li>
                 </ul>
             </div>
 
@@ -1542,6 +1717,49 @@ function isTab(string $tab): bool {
 </pre>
             </div>
 
+            <!-- Flow Diagram: cron_flood_scheduled -->
+            <div class="guide-card">
+                <h3>🕐 Flow การทำงาน: cron_flood_scheduled.php (แจ้งเตือนตามเวลา)</h3>
+                <pre class="flow-diagram">
+┌──────────────────────────────┐
+│  Cron Job                    │  ทุกชั่วโมง (0 * * * *)
+│  cron_flood_scheduled.php    │
+└────────┬─────────────────────┘
+         │
+         ▼
+┌───────────────────────────────────────┐
+│  ดึงสถานีที่ตั้งเวลาตรงชั่วโมงนี้     │
+│  SELECT FROM scheduled_hours          │
+│  WHERE hour = ชั่วโมงปัจจุบัน          │
+│  AND station enabled = 1              │
+└────────┬──────────────────────────────┘
+         │
+         ▼
+    ┌────┴──────────┐
+    │ มีสถานี       │──── ไม่มี ──→ จบ
+    │ ที่ตรงเวลา?   │
+    └────┬──────────┘
+         │ มี
+         ▼
+┌───────────────────────┐
+│  ดึงข้อมูล API        │  GET /api/floodboy/realtime
+│  CMU CCDC             │
+└────────┬──────────────┘
+         │
+         ▼
+┌───────────────────────────────────────┐
+│  วนลูปแต่ละสถานีที่ตรงเวลา           │
+│  ├─ คำนวณ % และ severity             │
+│  └─ ส่ง Flex Message ทุกระดับ        │
+│     (normal / watch / critical)      │
+│     ไปยังทุก group ที่ตั้งค่าไว้      │
+└───────────────────────────────────────┘
+</pre>
+                <div class="guide-tip">
+                    <strong>💡 หมายเหตุ:</strong> แจ้งเตือนตามเวลาจะส่งทุกระดับ ไม่ว่า % จะเท่าไหร่ ไม่มี cooldown — เหมาะสำหรับรับรายงานสถานะประจำชั่วโมง
+                </div>
+            </div>
+
             <!-- ระดับการแจ้งเตือนภัยน้ำท่วม -->
             <div class="guide-card">
                 <h3>🚩 ระดับการแจ้งเตือนภัยน้ำท่วม</h3>
@@ -1676,6 +1894,21 @@ function isTab(string $tab): bool {
                 </div>
             </div>
 
+            <!-- แจ้งเตือนตามเวลา -->
+            <div class="guide-card">
+                <h3>🕐 วิธีตั้งแจ้งเตือนตามเวลา</h3>
+                <p>สามารถตั้งให้สถานีส่งข้อมูลระดับน้ำตามชั่วโมงที่กำหนด โดย <strong>ไม่สน % </strong> — ส่งทุกระดับ (ปกติ / เฝ้าระวัง / วิกฤต)</p>
+                <ol>
+                    <li>ไปที่แท็บ <strong>📡 จุดตรวจวัด</strong> → หาสถานีที่ต้องการ</li>
+                    <li>ในส่วน <strong>"แจ้งเตือนตามเวลา"</strong> → เลือกชั่วโมงจาก dropdown (00:00 - 23:00)</li>
+                    <li>กด <strong>+</strong> เพื่อเพิ่ม — สามารถเพิ่มหลายชั่วโมงได้</li>
+                    <li>คลิกที่ badge ชั่วโมง (เช่น <code>10:00 ✕</code>) เพื่อลบ</li>
+                </ol>
+                <div class="guide-tip">
+                    <strong>💡 ตัวอย่าง:</strong> สถานีแม่สา ตั้งเวลา 08:00 และ 17:00 → ทุกวันเวลา 8 โมงเช้าและ 5 โมงเย็น ระบบจะส่งการ์ดระดับน้ำของสถานีนี้ไปยังกลุ่ม LINE อัตโนมัติ
+                </div>
+            </div>
+
             <!-- รายงานสรุป -->
             <div class="guide-card">
                 <h3>📊 รายงานสรุป (Daily Summary)</h3>
@@ -1696,8 +1929,11 @@ function isTab(string $tab): bool {
             <div class="guide-card">
                 <h3>⏰ การตั้ง Crontab</h3>
                 <pre class="flow-diagram">
-# เช็คแจ้งเตือนทุก 10 นาที
+# แจ้งเตือนตาม % ทุก 10 นาที
 */10 * * * * php /path/to/cron_flood.php >> /path/to/logs/cron.log 2>&1
+
+# แจ้งเตือนตามเวลาที่ตั้งไว้ ทุกชั่วโมง
+0 * * * * php /path/to/cron_flood_scheduled.php >> /path/to/logs/cron_scheduled.log 2>&1
 
 # รายงานสรุป 08:00 และ 16:00
 0 8,16 * * * php /path/to/cron_flood_summary.php >> /path/to/logs/cron_summary.log 2>&1

@@ -72,6 +72,14 @@ function getDB(): PDO
         UNIQUE KEY unique_station_threshold (station_id, threshold)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
 
+    $db->exec('CREATE TABLE IF NOT EXISTS scheduled_hours (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        station_id VARCHAR(50),
+        hour TINYINT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY unique_station_hour (station_id, hour)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+
     return $db;
 }
 if (php_sapi_name() === 'cli' && realpath($argv[0] ?? '') === realpath(__FILE__)) {
